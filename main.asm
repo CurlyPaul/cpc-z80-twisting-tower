@@ -13,89 +13,118 @@ call Palette_Init
 ; Main Program
 ;****************************************
 MainLoop:
-	
-	call DrawScreen
+	call DrawBackground
+
+	ld iy,Row1Template
+	call DrawRow
+	ld iy,Row2Template
+	;;call DrawRow
+	ld iy,Row3Template
+	;;call DrawRow
+	ld iy,Row4Template
+	;;call DrawRow
+
 	call MC_WAIT_FLYBACK
 	call SwitchScreenBuffer
 jp MainLoop
 	
-SwitchScreenBuffer:
-	; Flips all the screen buffer variables and moves the back buffer onto the screen
-	ld a,(ScreenStartAddressFlag)
-	sub 16
-	jp nz, SetScreenBufferTwo
-SetScreenBufferOne:
-	ld de,48
-	ld (ScreenStartAddressFlag),de
-	ld de,&4000
-	ld (BackBufferAddress),de
-	ld de,&7FFF
-	ld (ScreenOverflowAddress),de
-	jp DoSwitchScreen
-SetScreenBufferTwo:
-	ld de,16
-	ld (ScreenStartAddressFlag),de
-	ld de,&C000
-	ld (BackBufferAddress),de 
-	ld de,&FFFF
-	ld (ScreenOverflowAddress),de
-DoSwitchScreen:
-	ld bc,&BC0C 	; CRTC Register to change the start address of the screen
-	out (c),c
-	inc b
-	ld a,(ScreenStartAddressFlag)
-	out (c),a
-ret
-
-DrawScreen:
-	di
-	call DrawBackground
-	;call DrawPlayer
-	ei
-ret
-
 DrawBackground:
 	; for now, just draw an empty background
 	call ClearScreen
 ret
 
 ClearScreen:
-	ld hl,(BackBufferAddress)
-	ld de,(BackBufferAddress)
-	inc de
-	ld bc,ScreenSize-1
-	ld (hl),0
-	ldir
+	push de
+		ld hl,(BackBufferAddress)
+		ld de,(BackBufferAddress)
+		inc de
+		ld bc,ScreenSize-1
+		ld (hl),0
+		ldir
+	pop de
 ret
-DrawPlayer:	
-	DoPlayerDrawing:
-		ld bc,(CursorCurrentPosXY)
-		call GetScreenPos
-		;ld de,(PickleCurrentFrame)
-		ld b,56 ; Lines
-		ld c,12 ; Bytes per line
-	
-DrawSprite:
-	;; Inputs: 
-	;; 	DE - Frame address
-	;; 	HL - Screen address 	
-	;; 	B  - Lines per sprite
-	;; 	C  - Bytes per line
-	SpriteNextLine:
-		push hl
-		push bc
-	SpriteNextByte:
-			ld a,(de)	; Sourcebyte	
-			ld (hl),a	; Screen desintation
 
+DrawRow:
+	;; INPUTS
+	;; IY Row struct
+	ld b,(iy+0)	;; X
+	ld c,(iy+1)	;; Y
+	ld d,(iy+2)	;; H
+	ld e,(iy+4)	;; W
+	dec e
+	bit 7,e
+	jr z,SkipLeftReset
+	ld e,(iy+3)	;; Starting width
+SkipLeftReset:
+	ld (iy+4),e
+	call DrawSquare
+
+	;; The X pos of this one needs to be sqOne.xPos + sqOne.W + Space
+	ld a,b
+	add e
+	inc a
+	ld b,a
+	ld e,(iy+3)
+	call DrawSquare
+
+	ld a,b
+	add e
+	inc a
+	ld b,a
+	ld e,(iy+3)
+	call DrawSquare
+	
+	ld a,b
+	add e
+	inc a
+	ld b,a
+	;; For the final square the width starts at zero
+	ld e,(iy+5)
+	inc e
+
+	;; Check if it's larger than the starting width
+	
+	ld a,e
+	cp &0E
+	jr c,SkipRightReset 	
+	ld e,&00
+	SkipRightReset:
+	ld (iy+5),e
+	call DrawSquare
+	
+ret
+
+DrawSquare:
+	;; INPUTS
+	;; bc (x,y)
+	;; de Height, Width
+	ld a,e
+	cp 0
+	ret z
+	bit 7,e
+	ret nz
+
+	push bc
+	push de
+		call GetScreenPos 	;; HL = screen position
+		ld b,d ; Height in lines
+		ld c,e ; Width in Bytes
+		SquareNextLine:
+			push hl
+			push bc
+		SquareNextByte:
+			ld a,%11110000	; Sourcebyte	
+			ld (hl),a	;; A = Screen desintation
 			inc de
 			inc hl
 			dec c
-			jr nz,SpriteNextByte
-		pop bc
-		pop hl
-	call GetNextLine 		; expected - c051, C0A1, C0F1.. last C9e1
-	djnz SpriteNextLine 		; djnz - decreases b and jumps when it's not zero
+			jr nz,SquareNextByte
+			pop bc
+			pop hl
+		call GetNextLine 		
+		djnz SquareNextLine	;; djnz - decreases b and jumps when it's not zero
+	pop de
+	pop bc
 ret
 
 GetScreenPos:
@@ -147,6 +176,34 @@ GetNextLine:
 	pop bc	
 ret
 
+SwitchScreenBuffer:
+	; Flips all the screen buffer variables and moves the back buffer onto the screen
+	ld a,(ScreenStartAddressFlag)
+	sub 16
+	jp nz, SetScreenBufferTwo
+SetScreenBufferOne:
+	ld de,48
+	ld (ScreenStartAddressFlag),de
+	ld de,&4000
+	ld (BackBufferAddress),de
+	ld de,&7FFF
+	ld (ScreenOverflowAddress),de
+	jp DoSwitchScreen
+SetScreenBufferTwo:
+	ld de,16
+	ld (ScreenStartAddressFlag),de
+	ld de,&C000
+	ld (BackBufferAddress),de 
+	ld de,&FFFF
+	ld (ScreenOverflowAddress),de
+DoSwitchScreen:
+	ld bc,&BC0C 	; CRTC Register to change the start address of the screen
+	out (c),c
+	inc b
+	ld a,(ScreenStartAddressFlag)
+	out (c),a
+ret
+
 ;****************************************
 ; Variables
 ;****************************************
@@ -155,7 +212,39 @@ ScreenOverflowAddress: 	dw &7FFF
 BackBufferAddress: 	dw &4000 
 FrameCounter: 		db 0
 
-CursorCurrentPosXY:	dw &0000		; Player xy pos
+Row1Template:
+	db &0F ;; X pos
+	db &00 ;; Y pos
+	db &30 ;; Height
+	db &0D ;; Width
+	db &0D ;; Current LH square width
+	db &0  ;; Current RH square width
+
+Row2Template:
+	db &0F ;; X pos
+	db &43 ;; Y pos
+	db &30 ;; Height
+	db &0D ;; Width
+	db &06 ;; Current LH square width
+	db &07 ;; Current RH square width
+
+
+Row3Template:
+	db &0F ;; X pos
+	db &76 ;; Y pos
+	db &10 ;; Height
+	db &0D ;; Width
+	db &0D ;; Current LH square width
+	db &0  ;; Current RH square width
+
+Row4Template:
+	db &0F ;; X pos
+	db &89 ;; Y pos
+	db &30 ;; Height
+	db &0D ;; Width
+	db &06 ;; Current LH square width
+	db &07 ;; Current RH square width
+
 
 read ".\libs\CPC_V1_SimpleScreenSetUp.asm"
 read ".\libs\CPC_V1_SimplePalette.asm"
