@@ -9,8 +9,9 @@ RowOffset_Height equ 2
 RowOffset_BlockWidth equ 3
 RowOffset_LHWidth equ 4
 RowOffset_RHWidth equ 5
+RowOffset_Hue equ 6
 
-MC_WAIT_FLYBACK equ &BD19
+Pallete_Black equ 14
 
 org &8000
 
@@ -20,7 +21,6 @@ call InterruptHandler_Init
 call MainLoop
 
 HeatMap:
-;; each section of these is read in backwards
 db %00000000 ;; #1 - 0 0
 db %00000000 ;; #2 - 0 0
 db %00000000 ;; #3 - 0 0
@@ -33,10 +33,10 @@ db %10000100 ;; #9- 1 2
 db %00001100 ;; #10- 2 2
 db %00001100 ;; #11- 2 2
 db %00001100 ;; #12- 2 2
-db %00001100 ;; #13- 2 2
-db %11001100 ;; #14- 3 3
+db %11001100 ;; #13- 2 2
 
-db %00111100 ;; #1 - 0 0
+db %11001100 ;; #14- 3 3
+db %00001100 ;; #1 - 0 0
 db %00001100 ;; #2 - 0 0
 db %00001100 ;; #3 - 0 0
 db %00001100 ;; #4- 1 1
@@ -51,22 +51,20 @@ db %00001100 ;; #12- 2 2
 db %00001100 ;; #13- 2 2
 db %00001100 ;; #14- 3 3
 
-db %11001100 ;; #14- 3 3
-db %00001100 ;; #13- 2 2
-db %00001100 ;; #12- 2 2
-db %00001100 ;; #11- 2 2
-db %00001100 ;; #10- 2 2
-db %10000100 ;; #9- 1 2
-db %10000100 ;; #8- 1 2
-db %10000100 ;; #7- 1 2
-db %11000000 ;; #6- 1 1
-db %11000000 ;; #5- 1 1
-db %11000000 ;; #4- 1 1
-db %00000000 ;; #3 - 0 0
-db %00000000 ;; #2 - 0 0
-db %00000000 ;; #1 - 0 0
-
-
+db %11001100 ;; 
+db %00001100 ;; 
+db %00001100 ;; 
+db %00001100 ;; 
+db %00001100 ;; 
+db %10000100 ;; 
+db %10000100 ;; 
+db %10000100 ;; 
+db %11000000 ;; 
+db %11000000 ;; 
+db %11000000 ;; 
+db %00000000 ;; 
+db %00000000 ;; 
+db %00000000 ;; 
 
 
 ;****************************************
@@ -78,13 +76,13 @@ MainLoop:
 	ld iy,Row1Template
 	call DrawRow
 	ld iy,Row2Template
-	call DrawRow
+	;;call DrawRow
 	ld iy,Row3Template
-	call DrawRow
+	;;call DrawRow
 	ld iy,Row4Template
-	call DrawRow
+	;;call DrawRow
 	ld iy,Row5Template
-	call DrawRow
+	;;call DrawRow
 	
 	ld ix,FrameSemaphor
 	ld (ix),1
@@ -117,11 +115,27 @@ DrawRow:
 	ld c,(iy+RowOffset_YPos)
 	ld d,(iy+RowOffset_Height)
 	ld e,(iy+RowOffset_LHWidth)
+
+	;; Get the starting colour
+	ld h,0
+	ld l,(iy+RowOffset_Hue)
+	ld (ColourMaskOffsetPlus2-2),hl
+
+	;; Decrease the width
 	dec e
-	;;ld e,8
 	bit 7,e ;; If the left most bit is set, we've gone past zero	
 	jr z,SkipLeftReset
+	;; Do left hand square reset
 	ld e,(iy+RowOffset_BlockWidth)
+
+	ld a,(iy+RowOffset_Hue)
+	xor 3
+	ld l,a
+	ld (iy+RowOffset_Hue),l
+	ld h,0
+	;; TODO last thing I added was to update the current one in use
+	;; not sure if this the right thing or not
+	ld (ColourMaskOffsetPlus2-2),hl
 SkipLeftReset:
 	ld (iy+RowOffset_LHWidth),e
 	call DrawSquare
@@ -129,11 +143,12 @@ SkipLeftReset:
 	;; Increment some of the values and draw another square
 	ld a,b
 	add e				;; b{sqOne.xPos} + e{sqOne.W} 
-	inc a				;; add one for the space
+	inc a
 	ld b,a  			;; put the final X back into b
 	ld e,(iy+RowOffset_BlockWidth)	;; this one is always the standard width
 	call DrawSquare
-
+	
+	
 	;; Another square the same as the last
 	ld a,b
 	add e
@@ -155,9 +170,9 @@ SkipLeftReset:
 	ld a,e
 	cp &0E	;; Width + 1, can't find a nice way to not hard code this
 	jr c,SkipRightReset 
-	
+	;; Do right square reset
 	ld e,&00
-	SkipRightReset:
+SkipRightReset:
 	ld (iy+RowOffset_RHWidth),e
 	call DrawSquare
 	
@@ -167,7 +182,7 @@ DrawSquare:
 	;; INPUTS
 	;; bc (x,y)
 	;; de Height, Width
-	;; l Row start
+	;; l Row start xpos
 	;; return if the width is zero
 	ld a,e
 	cp 0
@@ -193,12 +208,15 @@ DrawSquare:
 		;; init some loop counters
 		ld b,d ; Height in lines
 		ld c,e ; Width in Bytes
+		;;dec c
 		SquareNextLine:
 			push hl
 			push bc
+
 		SquareNextByte:
 			push hl
 			push de
+				;; TODO Can I do this outside of this loop and increment de?
 				ld hl,&00:HeatMapOffsetPlus2
 				ld a,e ;; e == width
 				sub c  ;; c == width - index
@@ -207,20 +225,28 @@ DrawSquare:
 				add l  ;; 
 				ld l,a				;;ld de,a ;; put it back in e
 				ld a,(hl)
+				;; A now contains the pixel data to write to the screen
+				ld hl,&00:ColourMaskOffsetPlus2
+				or a,l
 			pop de
 			pop hl
-			;;ld a,%10010100
 			ld (hl),a	;; HL = Screen desintation
-			;;inc de
 			inc hl
 			dec c
 			jr nz,SquareNextByte
 			pop bc
 			pop hl
+	
 		call GetNextLine 		
 		djnz SquareNextLine	;; djnz - decreases b and jumps when it's not zero
 	pop de
 	pop bc
+
+	ld hl,(ColourMaskOffsetPlus2-2)
+	ld a,l
+	xor 3
+	ld l,a
+	ld (ColourMaskOffsetPlus2-2),hl
 ret
 
 GetScreenPos:
@@ -351,12 +377,13 @@ FrameSemaphor:		db 0
 ;; 01110000 - 4 5
 ;; 11110000 - 5 5	
 Row1Template:
-	db &0F ;; X pos
-	db &00 ;; Y pos
-	db &30 ;; Height
-	db &0D ;; Width
-	db &0D ;; Current LH square width
-	db &0  ;; Current RH square width
+	db &0F 		;; X pos
+	db &00 		;; Y pos
+	db &30 		;; Height
+	db &0D 		;; Width
+	db &0D 		;; Current LH square width
+	db &0  		;; Current RH square width
+	db %00000000 	;; Colour mask
 
 Row2Template:
 	db &0F ;; X pos
@@ -365,7 +392,6 @@ Row2Template:
 	db &0D ;; Width
 	db &06 ;; Current LH square width
 	db &07 ;; Current RH square width
-
 
 Row3Template:
 	db &0F ;; X pos

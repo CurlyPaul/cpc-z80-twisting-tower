@@ -5,9 +5,24 @@
 ColourPalette: ; hardware colours
 ;;defb &54,&44,&55,&57,&4c,&5B,&56,&5E,&5E,&4C,&4C,&4C,&4C,&4C,&4C,&4B,&56
 
-defb &44,&55,&57,&53,&53,&5B,&53,&5E,&5E,&4C,&4C,&4C,&4C,&4C,&4C,&46,&46
+defb &44 ;; #0 Blue block
+defb &55 ;; #1 Blue block
+defb &57 ;; #2 Blue block
+defb &5B ;; #3 Blue block
+defb &53 ;; #4
+defb &5B ;; #5
+defb &53 ;; #6
+defb &5E ;; #7 
+defb &58 ;; #8 Purple block
+defb &5D ;; #9
+defb &5F ;; #10
+defb &4F ;; #11 Purple block
+defb &4C ;; #12
+defb &4C ;; #13
+defb &54 ;; #14 Black
+defb &46 ;; #15
+defb &46 ;; Border
 
-;; G W lG P R
 
 Palette_Init:
 	;; CPC has some quirks here as well, seems to be caused by the ability to flash each colour
