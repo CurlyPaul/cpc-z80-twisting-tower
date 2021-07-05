@@ -3,24 +3,23 @@
 ;;***************************************
 
 ColourPalette: ; hardware colours
-;;defb &54,&44,&55,&57,&4c,&5B,&56,&5E,&5E,&4C,&4C,&4C,&4C,&4C,&4C,&4B,&56
 
-defb &44 ;; #0 Blue block
-defb &55 ;; #1 Blue block
-defb &57 ;; #2 Blue block
-defb &5B ;; #3 Blue block
-defb &53 ;; #4
+defb &44 ;; #0 Darkest Blue 
+defb &55 ;; #1 Blue 
+defb &57 ;; #2 Blue 
+defb &5B ;; #3 Brightest Blue
+defb &4B ;; #4 White
 defb &5B ;; #5
 defb &53 ;; #6
 defb &5E ;; #7 
-defb &58 ;; #8 Purple block
-defb &5D ;; #9
-defb &5F ;; #10
-defb &4F ;; #11 Purple block
-defb &4C ;; #12
+defb &58 ;; #8 Darkest Purple
+defb &5D ;; #9 Purple
+defb &5F ;; #10 Purple
+defb &5B ;; #11 Brightest Purple (actually blue looks best here)
+defb &4B ;; #12 Another white
 defb &4C ;; #13
 defb &54 ;; #14 Black
-defb &46 ;; #15
+defb &46 ;; #15 Background
 defb &46 ;; Border
 
 
@@ -29,14 +28,8 @@ Palette_Init:
 	;;
 	;; http://www.cpcwiki.eu/forum/programming/screen-scrolling-and-ink-commands/
 	;; https://www.cpcwiki.eu/forum/programming/bios-call-scr_set_ink-and-interrupts/
-	;; di for safety
-	;di
 	ld hl,ColourPalette
 	call SetupColours
-	;; but for this to work, make sure these values are left in the shadow registers
-	;; so we've only got one switch in here
-	;exx
-	;ei
 ret
 
 SetupColours:

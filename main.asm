@@ -12,6 +12,12 @@ RowOffset_RHWidth equ 5
 RowOffset_Hue equ 6
 
 Pallete_Black equ 14
+		  ;; pixel A 	B
+HeatMap_0 equ %00000000 ;; 0	0
+HeatMap_1 equ %11000000 ;; 1	1
+HeatMap_2 equ %10000100	;; 1    2 ??? Toggle this 
+HeatMap_3 equ %00001100 ;; 2    2
+HeatMap_4 equ %11001100 ;; 3    3
 
 org &8000
 
@@ -21,50 +27,50 @@ call InterruptHandler_Init
 call MainLoop
 
 HeatMap:
-db %00000000 ;; #1 - 0 0
-db %00000000 ;; #2 - 0 0
-db %00000000 ;; #3 - 0 0
-db %11000000 ;; #4- 1 1
-db %11000000 ;; #5- 1 1
-db %11000000 ;; #6- 1 1
-db %10000100 ;; #7- 1 2
-db %10000100 ;; #8- 1 2
-db %10000100 ;; #9- 1 2
-db %00001100 ;; #10- 2 2
-db %00001100 ;; #11- 2 2
-db %00001100 ;; #12- 2 2
-db %11001100 ;; #13- 2 2
+db HeatMap_0
+db %10000000
+db HeatMap_1
+db HeatMap_1
+db HeatMap_1
+db HeatMap_2
+db HeatMap_2 
+db HeatMap_2 
+db %10011000 
+db HeatMap_3 
+db HeatMap_3
+db HeatMap_3
+db HeatMap_4
 
-db %11001100 ;; #14- 3 3
-db %00001100 ;; #1 - 0 0
-db %00001100 ;; #2 - 0 0
-db %00001100 ;; #3 - 0 0
-db %00001100 ;; #4- 1 1
-db %00001100 ;; #5- 1 1
-db %00001100 ;; #6- 1 1
-db %00001100 ;; #7- 1 2
-db %00001100 ;; #8- 1 2
-db %00001100 ;; #9- 1 2
-db %00001100 ;; #10- 2 2
-db %00001100 ;; #11- 2 2
-db %00001100 ;; #12- 2 2
-db %00001100 ;; #13- 2 2
-db %00001100 ;; #14- 3 3
+db HeatMap_4
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
+db HeatMap_3
 
-db %11001100 ;; 
-db %00001100 ;; 
-db %00001100 ;; 
-db %00001100 ;; 
-db %00001100 ;; 
-db %10000100 ;; 
-db %10000100 ;; 
-db %10000100 ;; 
-db %11000000 ;; 
-db %11000000 ;; 
-db %11000000 ;; 
-db %00000000 ;; 
-db %00000000 ;; 
-db %00000000 ;; 
+db HeatMap_4
+db HeatMap_3  
+db HeatMap_3  
+db HeatMap_3  
+db HeatMap_3 
+db HeatMap_2  
+db HeatMap_2  
+db HeatMap_2  
+db HeatMap_1  
+db HeatMap_1  
+db HeatMap_1  
+db HeatMap_1 
+db HeatMap_0
+db HeatMap_0
 
 
 ;****************************************
@@ -76,13 +82,13 @@ MainLoop:
 	ld iy,Row1Template
 	call DrawRow
 	ld iy,Row2Template
-	;;call DrawRow
+	call DrawRow
 	ld iy,Row3Template
-	;;call DrawRow
+	call DrawRow
 	ld iy,Row4Template
-	;;call DrawRow
+	call DrawRow
 	ld iy,Row5Template
-	;;call DrawRow
+	call DrawRow
 	
 	ld ix,FrameSemaphor
 	ld (ix),1
@@ -133,8 +139,6 @@ DrawRow:
 	ld l,a
 	ld (iy+RowOffset_Hue),l
 	ld h,0
-	;; TODO last thing I added was to update the current one in use
-	;; not sure if this the right thing or not
 	ld (ColourMaskOffsetPlus2-2),hl
 SkipLeftReset:
 	ld (iy+RowOffset_LHWidth),e
@@ -186,7 +190,7 @@ DrawSquare:
 	;; return if the width is zero
 	ld a,e
 	cp 0
-	ret z
+	jr z,ToggleHue
 
 	;; return if the width wrapped
 	bit 7,e
@@ -242,6 +246,7 @@ DrawSquare:
 	pop de
 	pop bc
 
+	ToggleHue:
 	ld hl,(ColourMaskOffsetPlus2-2)
 	ld a,l
 	xor 3
@@ -383,43 +388,43 @@ Row1Template:
 	db &0D 		;; Width
 	db &0D 		;; Current LH square width
 	db &0  		;; Current RH square width
-	db %00000000 	;; Colour mask
+	db %00000000 	;; Starting hue
 
 Row2Template:
-	db &0F ;; X pos
-	db &33 ;; Y pos
-	db &30 ;; Height
-	db &0D ;; Width
-	db &06 ;; Current LH square width
-	db &07 ;; Current RH square width
+	db &0F 		;; X pos
+	db &33 		;; Y pos
+	db &30 		;; Height
+	db &0D 		;; Width
+	db &06 		;; Current LH square width
+	db &07 		;; Current RH square width
+	db %00000011 	;; Starting hue
 
 Row3Template:
-	db &0F ;; X pos
-	db &66 ;; Y pos
-	db &10 ;; Height
-	db &0D ;; Width
-	db &03 ;; Current LH square width
-	db &0A ;; Current RH square width
+	db &0F 		;; X pos
+	db &66 		;; Y pos
+	db &10 		;; Height
+	db &0D 		;; Width
+	db &03 		;; Current LH square width
+	db &0A 		;; Current RH square width
+	db %00000000 	;; Starting hue
 
 Row4Template:
-	db &0F ;; X pos
-	db &79 ;; Y pos
-	db &30 ;; Height
-	db &0D ;; Width
-	db &0B ;; Current LH square width
-	db &02 ;; Current RH square width
+	db &0F 		;; X pos
+	db &79 		;; Y pos
+	db &30 		;; Height
+	db &0D 		;; Width
+	db &0B 		;; Current LH square width
+	db &02 		;; Current RH square width
+	db %00000011 	;; Starting hue
 
 Row5Template:
-	db &0F ;; X pos
-	db &AC ;; Y pos
-	db &18 ;; Height
-	db &0D ;; Width
-	db &09 ;; Current LH square width
-	db &04  ;; Current RH square width
+	db &0F 		;; X pos
+	db &AC 		;; Y pos
+	db &18 		;; Height
+	db &0D 		;; Width
+	db &09 		;; Current LH square width
+	db &04  	;; Current RH square width
+	db %00000000 	;; Starting hue
 
 read ".\libs\CPC_V1_SimpleScreenSetUp.asm"
 read ".\libs\CPC_V1_SimplePalette.asm"
-
-;****************************************
-; Resources
-;****************************************
