@@ -1,6 +1,6 @@
-;;***************************************
-;; Origially based an example at http://www.cpcwiki.eu/index.php/Programming An_example_loader
-;;***************************************
+;;********************************************************************************************
+;; Originally based an example at http://www.cpcwiki.eu/index.php/Programming An_example_loader
+;;********************************************************************************************
 
 ColourPalette: ; hardware colours
 

@@ -1,7 +1,6 @@
 ;****************************************
 ; Header
 ;****************************************
-ScreenSize equ &4000
 Palette_Background equ &FF
 Palette_Black equ &3F
 
@@ -16,6 +15,7 @@ call MainLoop
 ; Main Program
 ;****************************************
 MainLoop:
+	ld a, 0 ;; something to break on, delete
 	call DrawBackground
 
 	ld iy,Row1Struct
@@ -232,83 +232,6 @@ DrawBlock:
 		djnz BlockNextLine	;; djnz - decreases b and jumps when it's not zero
 ret
 
-GetScreenPos:
-	;; Inputs: BC - X Y
-	;; Returns HL : screen memory locations
-
-	;; Calculate the ypos first
-	push bc				; push bc because we need to preserve the value of b (xpos)
-		ld b,0			; which we must zero out because bc needs to be the y coordinate
-		ld hl,scr_addr_table	; load the address of the label into h1
-		add hl,bc		; as each element in the look up table is 2 bytes(&XXXX) long, so add the value of c (ypos) to hl twice
-		add hl,bc		; ...to convert h into an offset from the start of the lookup table
-		
-		;; Now read two bytes from the address held in hl. We have to do this one at a time
-
-		ld a,(hl)		; stash one byte from the address in hl into a
-		inc l			; increment the address we are pointing at
-		ld h,(hl)		; load the next byte into the address at h into h
-		ld l,a			; now put the first byte we read back into l
-
-	;; Now calculate the xpos, this is much easier as these are linear in screen
-	pop bc				; reset to BC to the original XY values
-					
-	ld a,b				; need to stash b as the next op insists on reading 16bit - we can't to ld c,(label)
-	ld bc,(BackBufferAddress)	; bc now contains either &4000 or &C000, depending which cycle we are in
-	ld c,a				; bc will now contain &40{x}
-	add hl,bc			; hl = hl + bc, add the x and y values together
-ret
-
-GetNextLine:
-	;; Inputs: HL Current screen memory location
-	;; Returns: HL updated to the start of the next line
-	ld a,h				; load the high byte of hl into a
-	add &08				; it's just a fact that each line is + &0800 from the last one
-	ld h,a				; put the value back in h
-
-	push hl
-	push de
-		ld d,h
-		ld e,l
-		ld hl,(ScreenOverflowAddress)
-		sbc hl,de 	; (OverflowAddress - CurrentAddress)
-	pop de
-	pop hl
-	ret p			; if top bit is set we've wrapped and ran out memory			
-	push bc		
-		ld bc,&C050	; if we've wrapped add this magic number nudge back to the right place
-		add hl,bc
-	pop bc	
-ret
-
-SwitchScreenBuffer:
-	; Flips all the screen buffer variables and moves the back buffer onto the screen
-	ld a,(ScreenStartAddressFlag)
-	sub 16
-	jp nz, SetScreenBufferTwo
-SetScreenBufferOne:
-	ld de,48
-	ld (ScreenStartAddressFlag),de
-	ld de,&4000
-	ld (BackBufferAddress),de
-	ld de,&7FFF
-	ld (ScreenOverflowAddress),de
-	jp DoSwitchScreen
-SetScreenBufferTwo:
-	ld de,16
-	ld (ScreenStartAddressFlag),de
-	ld de,&C000
-	ld (BackBufferAddress),de 
-	ld de,&FFFF
-	ld (ScreenOverflowAddress),de
-DoSwitchScreen:
-	ld bc,&BC0C 	; CRTC Register to change the start address of the screen
-	out (c),c
-	inc b
-	ld a,(ScreenStartAddressFlag)
-	out (c),a
-ret
-
 InterruptHandler_Init:
 	; Sets the rastor interrupt to our interrupt handler
 	di
@@ -356,7 +279,7 @@ RowOffset_RHWidth equ 5
 RowOffset_Hue equ 6
 
 Row1Struct:
-	db &0F 		;; X pos
+	db &0C 		;; X pos
 	db &00 		;; Y pos
 	db &30 		;; Height
 	db &0D 		;; Block Width
@@ -365,7 +288,7 @@ Row1Struct:
 	db %00000000 	;; Starting hue
 
 Row2Struct:
-	db &0F 		;; X pos
+	db &0C 		;; X pos
 	db &33 		;; Y pos
 	db &30 		;; Height
 	db &0D 		;; Block Width
@@ -374,7 +297,7 @@ Row2Struct:
 	db %00000011 	;; Starting hue
 
 Row3Struct:
-	db &0F 		;; X pos
+	db &0C 		;; X pos
 	db &66 		;; Y pos
 	db &10 		;; Height
 	db &0D 		;; Block Width
@@ -383,7 +306,7 @@ Row3Struct:
 	db %00000000 	;; Starting hue
 
 Row4Struct:
-	db &0F 		;; X pos
+	db &0C 		;; X pos
 	db &79 		;; Y pos
 	db &30 		;; Height
 	db &0D 		;; Block Width
@@ -392,7 +315,7 @@ Row4Struct:
 	db %00000011 	;; Starting hue
 
 Row5Struct:
-	db &0F 		;; X pos
+	db &0C 		;; X pos
 	db &AC 		;; Y pos
 	db &18 		;; Height
 	db &0D 		;; Block Width
@@ -400,7 +323,7 @@ Row5Struct:
 	db &04  	;; Current RH square width
 	db %00000000 	;; Starting hue
 
-read ".\libs\CPC_V1_SimpleScreenSetUp.asm"
+read ".\libs\CPC_V2_SimpleScreenSetUp.asm"
 read ".\libs\CPC_V1_SimplePalette.asm"
 
 ;****************************************
