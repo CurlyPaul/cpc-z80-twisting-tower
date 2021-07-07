@@ -27,15 +27,14 @@ MainLoop:
 	call DrawRow
 	ld iy,Row5Struct
 	call DrawRow
-	
-	ld ix,FrameSemaphor
-	ld (ix),1
-WaitFrame:
-	ld a,0
-	cp (ix)
-	jr z,MainLoop
-	halt
-jr WaitFrame
+_waitFrame:                                
+         ld b,#F5	;; PPI Rastor port
+_waitFrameLoop:
+         in a,(c)
+         rra  		;; Right most bit indicates vSync is happening
+         jr nc, _waitFrameLoop
+	 call SwitchScreenBuffer
+jr MainLoop
 	
 DrawBackground:
 	call ClearScreen
@@ -239,21 +238,21 @@ InterruptHandler_Init:
 ret
 
 InterruptHandler:
-	exx
-	ex af,af'
-		ld b,&F5 	; The PPI (Programmable Peripheral Interface) is a device which gives us info about the screen
-		in a,(c)	; read a from port (bc)
-		rra 		; right most bit indicates vsync, so push it into the carry
-		jp nc,InterruptHandlerReturn
-		ld ix,FrameSemaphor
-		ld a,0
-		cp (ix)
-		jp z,InterruptHandlerReturn ;; Frame not ready 
-		call SwitchScreenBuffer
-		ld (ix),0
-	InterruptHandlerReturn: 
-	exx
-	ex af,af'
+	;;exx
+	;;ex af,af'
+	;;	ld b,&F5 	; The PPI (Programmable Peripheral Interface) is a device which gives us info about the screen
+	;;	in a,(c)	; read a from port (bc)
+	;;	rra 		; right most bit indicates vsync, so push it into the carry
+	;;	jp nc,InterruptHandlerReturn
+	;;	ld ix,FrameSemaphor
+	;;	ld a,0
+	;;	cp (ix)
+	;;	jp z,InterruptHandlerReturn ;; Frame not ready 
+	;;	call SwitchScreenBuffer
+	;;	ld (ix),0
+	;;InterruptHandlerReturn: 
+	;;exx
+	;;ex af,af'
 	ei
 ret
 
@@ -263,8 +262,6 @@ ret
 ScreenStartAddressFlag:	db 48  		; 16 = &4000 48 = &C000 
 ScreenOverflowAddress: 	dw &7FFF
 BackBufferAddress: 	dw &4000 
-FrameCounter: 		db 0
-FrameSemaphor:		db 0
 
 RowOffset_XPos equ 0
 RowOffset_YPos equ 1
