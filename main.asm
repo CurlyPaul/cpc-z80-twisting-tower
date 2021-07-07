@@ -41,14 +41,13 @@ DrawBackground:
 ret
 
 ClearScreen:
-	push de
-		ld hl,(BackBufferAddress)
-		ld de,(BackBufferAddress)
-		inc de
-		ld bc,ScreenSize-1
-		ld (hl),Palette_Background
-		ldir
-	pop de
+	ld hl,(BackBufferAddress)
+	ld d,h
+	ld e,l
+	inc de
+	ld bc,ScreenSize-1
+	ld (hl),Palette_Background
+	ldir
 ret
 
 DrawRow:
