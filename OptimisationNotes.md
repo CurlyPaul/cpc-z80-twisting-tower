@@ -9,13 +9,16 @@ tldr - the GateArray divides the 16mhz signal from the crystal down to 4mhz for 
 50 frames a second == 66,000 cycles per frame
 
 
-Current cycles per frame: 539131
+Current cycles per draw cycle: 519372
 Gives me a measley 6 frames per second
 
 ## Task list
 
 ### Switch to 256 mode
 No effect
+
+### Remove some pointless commands
+506000 cycles per draw
 
 ### Switch to the fast frame flyback
 

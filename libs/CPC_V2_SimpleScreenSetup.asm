@@ -97,10 +97,10 @@ GetNextLine:
 	pop de
 	pop hl
 	ret p			; if top bit is set we've wrapped and ran out memory			
-	push bc		
-		ld bc,&C040	; if we've wrapped add this magic number nudge back to the right place
-		add hl,bc
-	pop bc	
+	push de		
+		ld de,&C040	; if we've wrapped add this magic number nudge back to the right place
+		add hl,de
+	pop de	
 ret
 
 SwitchScreenBuffer:

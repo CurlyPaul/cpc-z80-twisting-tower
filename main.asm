@@ -15,7 +15,6 @@ call MainLoop
 ; Main Program
 ;****************************************
 MainLoop:
-	ld a, 0 ;; something to break on, delete
 	call DrawBackground
 
 	ld iy,Row1Struct
@@ -124,9 +123,10 @@ ret
 
 DrawSquare:
 	;; INPUTS
+	;; IY Row struct
 	;; bc (x,y)
 	;; de Height, Width
-	;; l Row start xpos
+
 	;; return if the width is zero
 	ld a,e
 	cp 0
@@ -147,32 +147,29 @@ DrawSquare:
 	ld (HeatMapOffsetPlus2-2),hl
 
 	push bc
-	push de
 		call GetScreenPos 	;; HL = screen position
 		;; init some loop counters
-		ld b,d ; Height in lines
+		ld b,(iy+RowOffset_Height) ; Height in lines
 		ld c,e ; Width in Bytes
-		;;dec c
 		SquareNextLine:
 			push hl
 			push bc
 
+
+
 		SquareNextByte:
 			push hl
-			push de
+		; last thing I was looking at was this, getnextline is currently destroying de, can this statement below be hoisted
 				;; TODO Can I do this outside of this loop and increment de?
 				ld hl,&00:HeatMapOffsetPlus2
 				ld a,e ;; e == width
 				sub c  ;; c == width - index
-				ld b,0
-				ld d,0
 				add l  ;; 
-				ld l,a				;;ld de,a ;; put it back in e
+				ld l,a				
 				ld a,(hl)
 				;; A now contains the pixel data to write to the screen
 				ld hl,&00:ColourMaskOffsetPlus2
 				or a,l
-			pop de
 			pop hl
 			ld (hl),a	;; HL = Screen desintation
 			inc hl
@@ -183,7 +180,6 @@ DrawSquare:
 	
 		call GetNextLine 		
 		djnz SquareNextLine	;; djnz - decreases b and jumps when it's not zero
-	pop de
 	pop bc
 
 	ToggleHue:
