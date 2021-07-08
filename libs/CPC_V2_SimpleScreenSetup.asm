@@ -11,7 +11,6 @@
 ;; Label expectations:
 ;; 	- ScreenStartAddressFlag
 ;;	- BackBufferAddress
-;;	- ScreenOverflowAddress
 ;;
 ;;*****************************************************************************************
 ScreenSize equ &4000
@@ -90,61 +89,40 @@ GetNextLine:
 	add &08				; it's just a fact that each line is + &0800 from the last one
 	ld h,a				; put the value back in h
 
-	;; Check if we've wrapperd
-	push hl
+ScreenBankMod_Minus1:
+	bit 7,h		;Change this to bit 6,h if your screen is at &8000!
+	jr nz,_getNextLineDone
 	push de
-		ld d,h
-		ld e,l
-		ld hl,(ScreenOverflowAddress)
-		sbc hl,de 	; (OverflowAddress - CurrentAddress)
+		ld de,&C040
+		add hl,de
 	pop de
-	pop hl
-	ret p			; if top bit is set we've wrapped and ran out memory			
-	push bc		
-		ld bc,&C040	; if we've wrapped add this magic number nudge back to the right place
-		add hl,bc
-	pop bc	
+_getNextLineDone:
 ret
 
-;; when screen is at &C000 bit 7,h
-;; when screen is at &8000 bit 6,h
-
-;GetNextLine:
-;	ld a,h		;Add &08 to H (each CPC line is &0800 bytes below the last
-;	add &08
-;	ld h,a
-			;Every 8 lines we need to jump back to the top of the memory range to get the correct line
-			;The code below will check if we need to do this - yes it's annoying but that's just the way the CPC screen is!
-;ScreenBankMod_Minus1:
-;	bit 7,h		;Change this to bit 6,h if your screen is at &8000!
-;	jr nz,GetNextLineDone
-;	ld de,&C040
-;	add hl,de
-;GetNextLineDone:
-;	jp GetNextLineReturn
 
 
 SwitchScreenBuffer:
 	; Flips all the screen buffer variables and moves the back buffer onto the screen
 	ld a,(ScreenStartAddressFlag)
 	sub CRTC_8000
-	jr nz, SetScreenBufferTwo
-SetScreenBufferOne:
+	jr nz, _setScreenBase8000
+_setScreenBaseC000:
 	ld de,CRTC_C000 
 	ld (ScreenStartAddressFlag),de
 	ld de,&8000
 	ld (BackBufferAddress),de
-	ld de,&BFFF
-	ld (ScreenOverflowAddress),de
-	jr DoSwitchScreen
-SetScreenBufferTwo:
+	;; Remember this is the test for drawing to 8000, not C000
+	ld hl,&2874		;; Byte code for: Bit 6,JR Z
+	ld (ScreenBankMod_Minus1+1),hl
+	jr _doSwitchScreen
+_setScreenBase8000:
 	ld de,CRTC_8000
 	ld (ScreenStartAddressFlag),de
 	ld de,&C000 
 	ld (BackBufferAddress),de 
-	ld de,&FFFF
-	ld (ScreenOverflowAddress),de
-DoSwitchScreen:
+	ld hl,&207C		;; Byte code for: Bit 7,JR NZ
+	ld (ScreenBankMod_Minus1+1),hl
+_doSwitchScreen:
 	ld bc,&BC0C 	; CRTC Register to change the start address of the screen
 	out (c),c
 	inc b
