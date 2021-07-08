@@ -4,7 +4,7 @@
 Palette_Background equ &FF
 Palette_Black equ &3F
 
-org &8000
+org &4000
 
 call Screen_Init
 call Palette_Init
@@ -41,13 +41,16 @@ DrawBackground:
 ret
 
 ClearScreen:
+;; What is being draw in the background when this is off?
+;; What is adding all that junk to the sp?
+
 	ld hl,(BackBufferAddress)
 	ld d,h
 	ld e,l
 	inc de
-	ld bc,ScreenSize-1
+	ld bc,&3DFF		;; Number of bytes to clear
 	ld (hl),Palette_Background
-	ldir
+	ldir	
 ret
 
 DrawRow:
@@ -237,30 +240,27 @@ InterruptHandler_Init:
 ret
 
 InterruptHandler:
-	;;exx
-	;;ex af,af'
-	;;	ld b,&F5 	; The PPI (Programmable Peripheral Interface) is a device which gives us info about the screen
-	;;	in a,(c)	; read a from port (bc)
-	;;	rra 		; right most bit indicates vsync, so push it into the carry
-	;;	jp nc,InterruptHandlerReturn
-	;;	ld ix,FrameSemaphor
-	;;	ld a,0
-	;;	cp (ix)
-	;;	jp z,InterruptHandlerReturn ;; Frame not ready 
-	;;	call SwitchScreenBuffer
-	;;	ld (ix),0
-	;;InterruptHandlerReturn: 
-	;;exx
-	;;ex af,af'
+;; Not currently using but leaving this here so the palette keeps working
+
+;;	exx
+;;	ex af,af'
+;;		ld b,&F5 	; The PPI (Programmable Peripheral Interface) is a device which gives us info about the screen
+;;		in a,(c)	; read a from port (bc)
+;;		rra 		; right most bit indicates vsync, so push it into the carry
+;;		jp nc,InterruptHandlerReturn
+;;
+;;	InterruptHandlerReturn: 
+;;	exx
+;;	ex af,af'
 	ei
 ret
 
 ;****************************************
 ; Variables
 ;****************************************
-ScreenStartAddressFlag:	db 48  		; 16 = &4000 48 = &C000 
-ScreenOverflowAddress: 	dw &7FFF
-BackBufferAddress: 	dw &4000 
+ScreenStartAddressFlag:	db 48  		; 16 = &4000 32 = &8000 48 = &C000 ;; TODO Keiths example shows how to bitshift these
+ScreenOverflowAddress: 	dw &BFFF
+BackBufferAddress: 	dw &8000 
 
 RowOffset_XPos equ 0
 RowOffset_YPos equ 1

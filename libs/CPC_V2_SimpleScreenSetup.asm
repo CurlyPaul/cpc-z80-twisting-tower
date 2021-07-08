@@ -15,8 +15,11 @@
 ;;
 ;;*****************************************************************************************
 ScreenSize equ &4000
+CRTC_4000 equ 16
+CRTC_8000 equ 32
+CRTC_C000 equ 48
 
-CrtcOptions:
+CRTCOptions:
 	defb &3f	; R0 - Horizontal Total
 	defb 32	 	; R1 - Horizontal Displayed  (32 chars wide)
 	defb 42		; R2 - Horizontal Sync Position (centralises screen)
@@ -97,29 +100,47 @@ GetNextLine:
 	pop de
 	pop hl
 	ret p			; if top bit is set we've wrapped and ran out memory			
-	push de		
-		ld de,&C040	; if we've wrapped add this magic number nudge back to the right place
-		add hl,de
-	pop de	
+	push bc		
+		ld bc,&C040	; if we've wrapped add this magic number nudge back to the right place
+		add hl,bc
+	pop bc	
 ret
+
+;; when screen is at &C000 bit 7,h
+;; when screen is at &8000 bit 6,h
+
+;GetNextLine:
+;	ld a,h		;Add &08 to H (each CPC line is &0800 bytes below the last
+;	add &08
+;	ld h,a
+			;Every 8 lines we need to jump back to the top of the memory range to get the correct line
+			;The code below will check if we need to do this - yes it's annoying but that's just the way the CPC screen is!
+;ScreenBankMod_Minus1:
+;	bit 7,h		;Change this to bit 6,h if your screen is at &8000!
+;	jr nz,GetNextLineDone
+;	ld de,&C040
+;	add hl,de
+;GetNextLineDone:
+;	jp GetNextLineReturn
+
 
 SwitchScreenBuffer:
 	; Flips all the screen buffer variables and moves the back buffer onto the screen
 	ld a,(ScreenStartAddressFlag)
-	sub 16
+	sub CRTC_8000
 	jr nz, SetScreenBufferTwo
 SetScreenBufferOne:
-	ld de,48
+	ld de,CRTC_C000 
 	ld (ScreenStartAddressFlag),de
-	ld de,&4000
+	ld de,&8000
 	ld (BackBufferAddress),de
-	ld de,&7FFF
+	ld de,&BFFF
 	ld (ScreenOverflowAddress),de
 	jr DoSwitchScreen
 SetScreenBufferTwo:
-	ld de,16
+	ld de,CRTC_8000
 	ld (ScreenStartAddressFlag),de
-	ld de,&C000
+	ld de,&C000 
 	ld (BackBufferAddress),de 
 	ld de,&FFFF
 	ld (ScreenOverflowAddress),de

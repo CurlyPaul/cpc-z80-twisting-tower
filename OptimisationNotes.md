@@ -19,8 +19,10 @@ No effect
 
 ### Remove some pointless commands
 506000 cycles per draw
+440000
 
 ### Switch to the fast frame flyback
+Still 440000
 
 ### Implement Keith's fast block copy routine
 
