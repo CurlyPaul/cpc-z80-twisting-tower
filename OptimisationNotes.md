@@ -25,6 +25,10 @@ No effect
 Still 440000
 
 ### Implement Keith's fast block copy routine
+420000
+
+### Restructure DrawSquare
+348000 - up to 9 frames per second!!
 
 
 

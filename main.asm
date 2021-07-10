@@ -5,7 +5,7 @@ Palette_Background equ &FF
 Palette_Black equ &3F
 
 org &4000
-run start
+;;run start
 
 Start:
 call Screen_Init
@@ -21,13 +21,13 @@ MainLoop:
 	ld iy,Row1Struct
 	call DrawRow
 	ld iy,Row2Struct
-	;;call DrawRow
+	call DrawRow
 	ld iy,Row3Struct
-	;;call DrawRow
+	call DrawRow
 	ld iy,Row4Struct
-	;;call DrawRow
+	call DrawRow
 	ld iy,Row5Struct
-	;;call DrawRow
+	call DrawRow
 _waitFrame:                                
          ld b,#F5	;; PPI Rastor port
 _waitFrameLoop:
@@ -42,9 +42,6 @@ DrawBackground:
 ret
 
 ClearScreen:
-;; What is being draw in the background when this is off?
-;; What is adding all that junk to the sp?
-
 	ld hl,(BackBufferAddress)
 	ld d,h
 	ld e,l
@@ -70,13 +67,13 @@ DrawRow:
 	ld (ColourMaskOffsetPlus2-2),hl
 
 	;; Decrease the width
-	;;dec e
+	dec e
 	bit 7,e ;; If the left most bit is set, we've gone past zero	
 	jr z,SkipLeftReset
 	;; Do left hand square reset
-	ld e,(iy+RowOffset_BlockWidth)
+	ld e,(iy+RowOffset_BlockWidth) ;; Reset the width
 
-	ld a,(iy+RowOffset_Hue)
+	ld a,(iy+RowOffset_Hue)	 	;; Toggle the hue
 	xor 3
 	ld l,a
 	ld (iy+RowOffset_Hue),l
@@ -85,7 +82,7 @@ DrawRow:
 SkipLeftReset:
 	ld (iy+RowOffset_LHWidth),e
 	call DrawSquare
-ret
+
 	;; Increment some of the values and draw another square
 	ld a,b
 	add (iy+RowOffset_LHWidth)				;; b{sqOne.xPos} + e{sqOne.W} 
@@ -113,7 +110,7 @@ ret
 
 	;; Check if it's larger than the starting width
 	ld a,e
-	cp &0E	;; Width + 1, can't find a nice way to not hard code this
+	cp &0E	;; Width + 1
 	jr c,SkipRightReset 
 	;; Do right square reset
 	ld e,&00
@@ -122,6 +119,8 @@ SkipRightReset:
 	call DrawSquare
 	
 ret
+
+; todo the colours are out by one
 
 DrawSquare:
 	;; INPUTS
@@ -132,71 +131,51 @@ DrawSquare:
 	;; return if the width is zero
 	ld a,e
 	cp 0
-	jr z,ToggleHue
-
-	;; return if the width wrapped
-	bit 7,e
-	ret nz
+	jr z,_toggleHue
 
 	;; Need to maintain this value, but DE is too useful to tie up
 	ld ixl, e
 
-	;; TODO Swith this to calculating the end point of the heatmap so I can just dec this below
-	;; Calculate where the start of the heatmap is for this block
+	;; Calculate where the start of the heatmap is for this block and store it in de
 	;; Xpos - RowStartXPos + Heatmap
 	;; (B - (iy+RowOffset_XPos)) + HeatMap
 	
 	ld a,b
 	sub (iy+RowOffset_XPos)
-	ld hl,HeatMap
-	add l
-	ld l,a
-
-	;; Now we have the first pixel in the map, but we loop backwards to draw them
-	;; So need to add the width of the square
-	ld a,ixl
-	add l
-	ld l,a
-	ld (HeatMapOffsetPlus2-2),hl
+	ld de,HeatMap
+	add e
+	ld e,a
 
 	push bc
 		call GetScreenPos 	;; HL = screen position
 		;; init some loop counters
-		;; TODO try using IXL and H as loop counters as it will free up a level of pops
 		ld b,(iy+RowOffset_Height) ; Height in lines
 		ld c,ixl ; Width in Bytes
 
-		SquareNextLine:
-			push hl
-			push bc
-			;; TODO I could out the row loop reset here and remove another level of pops??
-
-
-		SquareNextByte:
-		; last thing I was looking at was this, getnextline is currently destroying de, can this statement below be hoisted
-				;; TODO Can I do this outside of this loop and increment de?
-			ld de,&00:HeatMapOffsetPlus2
-			ld a,e
-			sub c  ;; c == byte index
-			ld e,a	;; I'm sure this may wrap and cause bugs			
-			ld a,(de)
-			;; A now contains the pixel data to write to the screen
-			;; Apply the hue to the block
-			ld de,&00:ColourMaskOffsetPlus2
-			or a,e
+		_squareNextLine:
+			push de ;; Preserving pointer to heatmap
+			push hl ;; Preserving point to the scr address
+			push bc ;; Resetting loop counters for the next line
+		
+		_squareNextByte:		
+				ld a,(de) 			;; Load a byte from the heatmap
+				ld ix,&00:ColourMaskOffsetPlus2 ;; Apply the hue for this block block
+				or a,ixl
 				
-			ld (hl),a	;; HL = Screen desintation
-			inc hl
-			dec c
-			jr nz,SquareNextByte
+				ld (hl),a	;; HL = Screen desintation
+				inc hl
+				inc de
+				dec c
+				jr nz,_squareNextByte
+			
 			pop bc
 			pop hl
-	
-		call GetNextLine 		
-		djnz SquareNextLine	;; djnz - decreases b and jumps when it's not zero
+			call GetNextLine ;; Load HL wit the scr address for the next line		
+			pop de
+		djnz _squareNextLine	;; djnz - decreases b and jumps when it's not zero
 	pop bc
 
-	ToggleHue:
+	_toggleHue:
 	ld hl,(ColourMaskOffsetPlus2-2)
 	ld a,l
 	xor 3
