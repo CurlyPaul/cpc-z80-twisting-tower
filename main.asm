@@ -5,11 +5,12 @@ Palette_Background equ &FF
 Palette_Black equ &3F
 
 org &4000
+run start
 
+Start:
 call Screen_Init
 call Palette_Init
 call InterruptHandler_Init
-call MainLoop
 
 ;****************************************
 ; Main Program
@@ -87,7 +88,7 @@ SkipLeftReset:
 
 	;; Increment some of the values and draw another square
 	ld a,b
-	add e				;; b{sqOne.xPos} + e{sqOne.W} 
+	add (iy+RowOffset_LHWidth)				;; b{sqOne.xPos} + e{sqOne.W} 
 	inc a
 	ld b,a  			;; put the final X back into b
 	ld e,(iy+RowOffset_BlockWidth)	;; this one is always the standard width
@@ -95,7 +96,7 @@ SkipLeftReset:
 
 	;; Another square the same as the last
 	ld a,b
-	add e
+	add (iy+RowOffset_BlockWidth)
 	inc a
 	ld b,a
 	ld e,(iy+RowOffset_BlockWidth)
@@ -103,7 +104,7 @@ SkipLeftReset:
 	
 	;; For the final one, calculate the xPos as before
 	ld a,b
-	add e
+	add (iy+RowOffset_BlockWidth)
 	inc a
 	ld b,a
 	;; Now calculate it's width
@@ -125,8 +126,8 @@ ret
 DrawSquare:
 	;; INPUTS
 	;; IY Row struct
-	;; bc (x,y)
-	;; de Height, Width
+	;; BC (x,y)
+	;; E Block Width
 
 	;; return if the width is zero
 	ld a,e
@@ -137,6 +138,11 @@ DrawSquare:
 	bit 7,e
 	ret nz
 
+	;; Need to maintain this value, but DE is too useful to tie up
+	ld ixl, e
+
+	;; TODO Swith this to calculating the end point of the heatmap so I can just dec this below
+	;; Calculate where the start of the heatmap is for this block
 	;; Xpos - RowStartXPos + Heatmap
 	;; (B - (iy+RowOffset_XPos)) + HeatMap
 	
@@ -150,12 +156,15 @@ DrawSquare:
 	push bc
 		call GetScreenPos 	;; HL = screen position
 		;; init some loop counters
+		;; TODO try using IXL and H as loop counters as it will free up a level of pops
 		ld b,(iy+RowOffset_Height) ; Height in lines
-		ld c,e ; Width in Bytes
+		ld c,ixl ; Width in Bytes
+
+		;; TODO Main problem of hoisting the value below... we can destroy e at this point
 		SquareNextLine:
 			push hl
 			push bc
-
+			;; TODO I could out the row loop reset here and remove another level of pops??
 
 
 		SquareNextByte:
@@ -163,9 +172,9 @@ DrawSquare:
 		; last thing I was looking at was this, getnextline is currently destroying de, can this statement below be hoisted
 				;; TODO Can I do this outside of this loop and increment de?
 				ld hl,&00:HeatMapOffsetPlus2
-				ld a,e ;; e == width
+				ld a,ixl ;; e == width
 				sub c  ;; c == width - index
-				add l  ;; 
+				add l  ;;
 				ld l,a				
 				ld a,(hl)
 				;; A now contains the pixel data to write to the screen

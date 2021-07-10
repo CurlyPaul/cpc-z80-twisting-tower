@@ -55,6 +55,7 @@ Screen_Init:
 		jr nz,set_crtc_vals
 ret
 
+
 GetScreenPos:
 	;; Inputs: BC - X Y
 	;; Returns HL : screen memory locations
@@ -89,13 +90,11 @@ GetNextLine:
 	add &08				; it's just a fact that each line is + &0800 from the last one
 	ld h,a				; put the value back in h
 
-ScreenBankMod_Minus1:
+_screenBankMod_Minus1:
 	bit 7,h		;Change this to bit 6,h if your screen is at &8000!
 	jr nz,_getNextLineDone
-	push de
-		ld de,&C040
-		add hl,de
-	pop de
+	ld de,&C040
+	add hl,de
 _getNextLineDone:
 ret
 
@@ -113,7 +112,7 @@ _setScreenBaseC000:
 	ld (BackBufferAddress),de
 	;; Remember this is the test for drawing to 8000, not C000
 	ld hl,&2874		;; Byte code for: Bit 6,JR Z
-	ld (ScreenBankMod_Minus1+1),hl
+	ld (_screenBankMod_Minus1+1),hl
 	jr _doSwitchScreen
 _setScreenBase8000:
 	ld de,CRTC_8000
@@ -121,7 +120,7 @@ _setScreenBase8000:
 	ld de,&C000 
 	ld (BackBufferAddress),de 
 	ld hl,&207C		;; Byte code for: Bit 7,JR NZ
-	ld (ScreenBankMod_Minus1+1),hl
+	ld (_screenBankMod_Minus1+1),hl
 _doSwitchScreen:
 	ld bc,&BC0C 	; CRTC Register to change the start address of the screen
 	out (c),c
