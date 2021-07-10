@@ -21,13 +21,13 @@ MainLoop:
 	ld iy,Row1Struct
 	call DrawRow
 	ld iy,Row2Struct
-	call DrawRow
+	;;call DrawRow
 	ld iy,Row3Struct
-	call DrawRow
+	;;call DrawRow
 	ld iy,Row4Struct
-	call DrawRow
+	;;call DrawRow
 	ld iy,Row5Struct
-	call DrawRow
+	;;call DrawRow
 _waitFrame:                                
          ld b,#F5	;; PPI Rastor port
 _waitFrameLoop:
@@ -70,7 +70,7 @@ DrawRow:
 	ld (ColourMaskOffsetPlus2-2),hl
 
 	;; Decrease the width
-	dec e
+	;;dec e
 	bit 7,e ;; If the left most bit is set, we've gone past zero	
 	jr z,SkipLeftReset
 	;; Do left hand square reset
@@ -85,7 +85,7 @@ DrawRow:
 SkipLeftReset:
 	ld (iy+RowOffset_LHWidth),e
 	call DrawSquare
-
+ret
 	;; Increment some of the values and draw another square
 	ld a,b
 	add (iy+RowOffset_LHWidth)				;; b{sqOne.xPos} + e{sqOne.W} 
@@ -151,6 +151,12 @@ DrawSquare:
 	ld hl,HeatMap
 	add l
 	ld l,a
+
+	;; Now we have the first pixel in the map, but we loop backwards to draw them
+	;; So need to add the width of the square
+	ld a,ixl
+	add l
+	ld l,a
 	ld (HeatMapOffsetPlus2-2),hl
 
 	push bc
@@ -160,7 +166,6 @@ DrawSquare:
 		ld b,(iy+RowOffset_Height) ; Height in lines
 		ld c,ixl ; Width in Bytes
 
-		;; TODO Main problem of hoisting the value below... we can destroy e at this point
 		SquareNextLine:
 			push hl
 			push bc
@@ -168,19 +173,18 @@ DrawSquare:
 
 
 		SquareNextByte:
-			push hl
 		; last thing I was looking at was this, getnextline is currently destroying de, can this statement below be hoisted
 				;; TODO Can I do this outside of this loop and increment de?
-				ld hl,&00:HeatMapOffsetPlus2
-				ld a,ixl ;; e == width
-				sub c  ;; c == width - index
-				add l  ;;
-				ld l,a				
-				ld a,(hl)
-				;; A now contains the pixel data to write to the screen
-				ld hl,&00:ColourMaskOffsetPlus2
-				or a,l
-			pop hl
+			ld de,&00:HeatMapOffsetPlus2
+			ld a,e
+			sub c  ;; c == byte index
+			ld e,a	;; I'm sure this may wrap and cause bugs			
+			ld a,(de)
+			;; A now contains the pixel data to write to the screen
+			;; Apply the hue to the block
+			ld de,&00:ColourMaskOffsetPlus2
+			or a,e
+				
 			ld (hl),a	;; HL = Screen desintation
 			inc hl
 			dec c
