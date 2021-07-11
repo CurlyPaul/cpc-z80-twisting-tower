@@ -19,8 +19,6 @@ call DrawBackground
 ; Main Program
 ;****************************************
 MainLoop:
-	call DrawBackground
-
 	ld iy,Row1Struct
 	call DrawRow
 	ld iy,Row2Struct
@@ -189,7 +187,7 @@ DrawSquare:
 			pop hl
 
 			;; Now copy the line we just drew into the lines below
-			ld b,(iy+RowOffset_Height) ;; Init b a loop counter for the Height in lines
+			ld b,(iy+RowOffset_Height) ;; Init b as a loop counter for the Height in lines
 			dec b	;; We already drew one line
 		_squareNextLine:
 			push bc	;; Preserving the value of b as a loop counter fo t

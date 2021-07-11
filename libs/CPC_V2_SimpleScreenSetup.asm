@@ -61,22 +61,29 @@ GetScreenPos:
 	;; Returns HL : screen memory locations
 
 	;; Calculate the ypos first
-	push bc				; push bc because we need to preserve the value of b (xpos)
-		ld b,0			; which we must zero out because bc needs to be the y coordinate
-		ld hl,scr_addr_table	; load the address of the label into h1
-		add hl,bc		; as each element in the look up table is 2 bytes(&XXXX) long, so add the value of c (ypos) to hl twice
-		add hl,bc		; ...to convert h into an offset from the start of the lookup table
-		
-		;; Now read two bytes from the address held in hl. We have to do this one at a time
+	ld hl,scr_addr_table	; load the address of the label into h1
 
-		ld a,(hl)		; stash one byte from the address in hl into a
-		inc l			; increment the address we are pointing at
-		ld h,(hl)		; load the next byte into the address at h into h
-		ld l,a			; now put the first byte we read back into l
+	;; Now read two bytes from the address held in hl. We have to do this one at a time
+	ld a,c
+	add   a, l    ; A = A+L
+	ld    l, a    ; L = A+L	
+   	adc   a, h    ; A = A+L+H+carry
+    	sub   l       ; A = H+carry
+    	ld    h, a    ; H = H+carry
 
-	;; Now calculate the xpos, this is much easier as these are linear in screen
-	pop bc				; reset to BC to the original XY values
-					
+	ld a,c
+	add   a, l    ; A = A+L
+   	ld    l, a    ; L = A+L	
+    	adc   a, h    ; A = A+L+H+carry
+    	sub   l       ; A = H+carry
+    	ld    h, a    ; H = H+carry
+
+	ld a,(hl)		; stash one byte from the address in hl into a
+	inc l			; increment the address we are pointing at
+	ld h,(hl)		; load the next byte into the address at h into h
+	ld l,a			; now put the first byte we read back into l
+
+	;; Now calculate the xpos, this is much easier as these are linear on the screen screen				
 	ld a,b				; need to stash b as the next op insists on reading 16bit - we can't to ld c,(label)
 	ld bc,(BackBufferAddress)	; bc now contains either &4000 or &C000, depending which cycle we are in
 	ld c,a				; bc will now contain &40{x}
