@@ -160,24 +160,18 @@ DrawSquare:
 	ld de,HeatMap
 	add e
 	ld e,a
-	;; TODO Idea... draw one row, and then copy it Height-1 times 
-	push bc
-		call GetScreenPos 	;; HL = screen position
-		;; init some loop counters
-		ld b,(iy+RowOffset_Height) ; Height in lines
-		dec b
-		ld c,ixl ; Width in Bytes
 
-		;;_squareNextLine:
-			;;push de ;; Preserving pointer to heatmap
-			push hl ;; Preserving pointer to the scr address
-			push bc ;; Resetting loop counters for the next line
+	push bc 	;; Preserving XYPos for the calling fuction
+		call GetScreenPos 	;; HL = screen position
 		
+		ld c,ixl ;; init c as a loop counter for the width
+		push hl ;; Preserving pointer to the scr address
+
 		_squareNextByte:		
-				push ix
-				ld a,(de) 			;; Load a byte from the heatmap
-				ld ix,&00:ColourMaskOffsetPlus2 ;; Apply the hue for this block block
-				or a,ixl
+				push ix	;; Todo this can probably be removed after refactor
+					ld a,(de) 			;; Load a byte from the heatmap
+					ld ix,&00:ColourMaskOffsetPlus2 ;; Apply the hue for this block block
+					or a,ixl
 				pop ix
 				ld (hl),a	;; HL = Screen desintation
 				inc hl
@@ -192,16 +186,13 @@ DrawSquare:
 				jr z,_skipBlackLine
 				ld (hl),Palette_Black
 				_skipBlackLine:
-			pop bc
 			pop hl
-			;;call GetNextLine ;; Load HL with the scr address for the next line		
-			;;pop de
 
-			ld b,(iy+RowOffset_Height) ; Height in lines
-			dec b
+			;; Now copy the line we just drew into the lines below
+			ld b,(iy+RowOffset_Height) ;; Init b a loop counter for the Height in lines
+			dec b	;; We already drew one line
 		_squareNextLine:
-			ld c,ixl
-			push bc
+			push bc	;; Preserving the value of b as a loop counter fo t
 				ld b,h
 				ld c,l
 				Call GetNextLine
@@ -210,30 +201,13 @@ DrawSquare:
 				ld h,b
 				ld l,c
 				ld b,0
-				ld c,&0E
-				push de
+				ld c,ixl
+				inc c
+				push de	;; Presering the scr addr of the line we just drew
 				ldir
-				pop de
-				;; DE now has the line we just drew, and hl has the line we just copied
-				ld h,d
-				ld l,e
+				pop hl 	;; But for now we need it in HL, so pop it back into there instead
 			pop bc
 		djnz _squareNextLine
-			;push bc
-
-			;	ld e,(hl)  	 	;; This has now got the first byte we wrote in it
-			;	call GetNextLine	;; Advance HL to the next scr line
-			;push hl
-			;_squareCopyNextByte:
-			;	ld (hl),e		;; Now the next line is the same
-			;	inc hl
-			;	ld e,(hl)
-			;	dec c
-			;	jr nz,_squareCopyNextByte
-			;pop hl
-			;pop bc
-
-		;djnz _squareNextLine	;; djnz - decreases b and jumps when it's not zero
 	pop bc
 
 	_toggleHue:
