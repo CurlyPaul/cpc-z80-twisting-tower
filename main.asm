@@ -11,6 +11,9 @@ Start:
 call Screen_Init
 call Palette_Init
 call InterruptHandler_Init
+call DrawBackground
+call SwitchScreenBuffer
+call DrawBackground
 
 ;****************************************
 ; Main Program
@@ -51,10 +54,24 @@ ClearScreen:
 	ldir	
 ret
 
+DrawRowV2:
+	;; Set the starting colour
+
+	;; In this context, draw only draws one line to the screen	
+	;; Draw the RH square, including the black line if needed
+
+	;; Given IY contains a row width 
+	;; create a loop that draws squares until we run out of width
+
+	;; Draw the LH square, including the black line if needed
+
+	;; Copy the above row down the screen
+
+
 DrawRow:
 	;; INPUTS
 	;; IY Row struct
-	call DrawBlock
+	;;call DrawBlock
 	
 	ld b,(iy+RowOffset_XPos)
 	ld c,(iy+RowOffset_YPos)
@@ -85,7 +102,7 @@ SkipLeftReset:
 
 	;; Increment some of the values and draw another square
 	ld a,b
-	add (iy+RowOffset_LHWidth)				;; b{sqOne.xPos} + e{sqOne.W} 
+	add (iy+RowOffset_LHWidth)	;; b{sqOne.xPos} + e{sqOne.W} 
 	inc a
 	ld b,a  			;; put the final X back into b
 	ld e,(iy+RowOffset_BlockWidth)	;; this one is always the standard width
@@ -120,8 +137,6 @@ SkipRightReset:
 	
 ret
 
-; todo the colours are out by one
-
 DrawSquare:
 	;; INPUTS
 	;; IY Row struct
@@ -145,34 +160,80 @@ DrawSquare:
 	ld de,HeatMap
 	add e
 	ld e,a
-
+	;; TODO Idea... draw one row, and then copy it Height-1 times 
 	push bc
 		call GetScreenPos 	;; HL = screen position
 		;; init some loop counters
 		ld b,(iy+RowOffset_Height) ; Height in lines
+		dec b
 		ld c,ixl ; Width in Bytes
 
-		_squareNextLine:
-			push de ;; Preserving pointer to heatmap
-			push hl ;; Preserving point to the scr address
+		;;_squareNextLine:
+			;;push de ;; Preserving pointer to heatmap
+			push hl ;; Preserving pointer to the scr address
 			push bc ;; Resetting loop counters for the next line
 		
 		_squareNextByte:		
+				push ix
 				ld a,(de) 			;; Load a byte from the heatmap
 				ld ix,&00:ColourMaskOffsetPlus2 ;; Apply the hue for this block block
 				or a,ixl
-				
+				pop ix
 				ld (hl),a	;; HL = Screen desintation
 				inc hl
 				inc de
 				dec c
 				jr nz,_squareNextByte
 			
+				;; skip this if the current value for x is greater than the end of the row
+				;; but what is the value of x at this point??
+				ld a,0
+				sub ixl
+				jr z,_skipBlackLine
+				ld (hl),Palette_Black
+				_skipBlackLine:
 			pop bc
 			pop hl
-			call GetNextLine ;; Load HL wit the scr address for the next line		
-			pop de
-		djnz _squareNextLine	;; djnz - decreases b and jumps when it's not zero
+			;;call GetNextLine ;; Load HL with the scr address for the next line		
+			;;pop de
+
+			ld b,(iy+RowOffset_Height) ; Height in lines
+			dec b
+		_squareNextLine:
+			ld c,ixl
+			push bc
+				ld b,h
+				ld c,l
+				Call GetNextLine
+				ld d,h
+				ld e,l
+				ld h,b
+				ld l,c
+				ld b,0
+				ld c,&0E
+				push de
+				ldir
+				pop de
+				;; DE now has the line we just drew, and hl has the line we just copied
+				ld h,d
+				ld l,e
+			pop bc
+		djnz _squareNextLine
+			;push bc
+
+			;	ld e,(hl)  	 	;; This has now got the first byte we wrote in it
+			;	call GetNextLine	;; Advance HL to the next scr line
+			;push hl
+			;_squareCopyNextByte:
+			;	ld (hl),e		;; Now the next line is the same
+			;	inc hl
+			;	ld e,(hl)
+			;	dec c
+			;	jr nz,_squareCopyNextByte
+			;pop hl
+			;pop bc
+
+		;djnz _squareNextLine	;; djnz - decreases b and jumps when it's not zero
 	pop bc
 
 	_toggleHue:
@@ -202,7 +263,7 @@ DrawBlock:
 	ld c,a  ;; C == Width in Bytes
 	
 	ld a,(iy+RowOffset_Height) ; Height in lines
-	add 3  	;; to make them the same as the vertical ones	
+	add 2  	;; to make them the same as the vertical ones	
 	ld b,a 	;; B == Height in lines
 	
 	BlockNextLine:
@@ -273,7 +334,7 @@ Row1Struct:
 
 Row2Struct:
 	db &0C 		;; X pos
-	db &33 		;; Y pos
+	db &32 		;; Y pos
 	db &30 		;; Height
 	db &0D 		;; Block Width
 	db &06 		;; Current LH square width
@@ -282,7 +343,7 @@ Row2Struct:
 
 Row3Struct:
 	db &0C 		;; X pos
-	db &66 		;; Y pos
+	db &64 		;; Y pos
 	db &10 		;; Height
 	db &0D 		;; Block Width
 	db &03 		;; Current LH square width
@@ -291,7 +352,7 @@ Row3Struct:
 
 Row4Struct:
 	db &0C 		;; X pos
-	db &79 		;; Y pos
+	db &76 		;; Y pos
 	db &30 		;; Height
 	db &0D 		;; Block Width
 	db &0B 		;; Current LH square width
@@ -300,8 +361,8 @@ Row4Struct:
 
 Row5Struct:
 	db &0C 		;; X pos
-	db &AC 		;; Y pos
-	db &18 		;; Height
+	db &A8 		;; Y pos
+	db &16 		;; Height
 	db &0D 		;; Block Width
 	db &09 		;; Current LH square width
 	db &04  	;; Current RH square width
@@ -367,4 +428,4 @@ HeatMap:
 	db HeatMap_1  
 	db HeatMap_1 
 	db HeatMap_0
-	db HeatMap_0
+	db HeatMap_4
