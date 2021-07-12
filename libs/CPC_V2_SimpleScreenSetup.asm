@@ -59,6 +59,7 @@ ret
 GetScreenPos:
 	;; Inputs: BC - X Y
 	;; Returns HL : screen memory locations
+	;; Destroys BC
 
 	;; Calculate the ypos first
 	ld hl,scr_addr_table	; load the address of the label into h1

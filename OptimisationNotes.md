@@ -95,3 +95,8 @@ DrawRowV2:
 	;; Draw the LH square, including the black line if needed
 
 	;; Copy the above row down the screen
+
+### DrawRowV2 implemented
+
+72118 cycles per draw... for a maximum of 45 frames
+BUT still need to put the deviding lines back and put the sheen right

@@ -21,14 +21,19 @@ call DrawBackground
 MainLoop:
 	ld iy,Row1Struct
 	call DrawRow
+	call CopyRow
 	ld iy,Row2Struct
 	call DrawRow
+	call CopyRow
 	ld iy,Row3Struct
 	call DrawRow
+	call CopyRow
 	ld iy,Row4Struct
 	call DrawRow
+	call CopyRow
 	ld iy,Row5Struct
 	call DrawRow
+	call CopyRow
 _waitFrame:                                
          ld b,#F5	;; PPI Rastor port
 _waitFrameLoop:
@@ -64,24 +69,52 @@ DrawRowV2:
 	;; Draw the LH square, including the black line if needed
 
 	;; Copy the above row down the screen
+CopyRow:
+	;; INPUTS 
+	;; HL = scr pos of first byte of last row 
+	;; IY = Row struct
+	ld b,(iy+RowOffset_Height)
+_copyNextLine:
+	push bc	
+		push hl
+		push hl 
+			call GetNextLine
+			ld d,h
+			ld e,l
+		pop hl
+		ld b,0
+		ld c,&30 ;; Todo calculate this from the row struct
+		ldir ;; HL first pixel of last line, de first pixel of this line, bc bytes to copy
 
+		;; HL now needs to be reset to the start of the previous row
+		pop hl
+		;; and incremented to the next row
+		call GetNextLine 
+		;; TODO I end up calling GetNextLine twice per line when I already have one of the values 
+	pop bc
+	djnz _copyNextLine
+ret
 
 DrawRow:
 	;; INPUTS
 	;; IY Row struct
-	;;call DrawBlock
-	
-	ld b,(iy+RowOffset_XPos)
-	ld c,(iy+RowOffset_YPos)
-	ld d,(iy+RowOffset_Height)
-	ld e,(iy+RowOffset_LHWidth)
+	;; RETURNS
+	;; HL scr pos of the first pixel in the row
 
 	;; Get the starting colour
 	ld h,0
 	ld l,(iy+RowOffset_Hue)
 	ld (ColourMaskOffsetPlus2-2),hl
+	
+	ld b,(iy+RowOffset_XPos)
+	ld c,(iy+RowOffset_YPos)
+	call GetScreenPos 	;; HL == scr position of the fisrt pixel in the first line
+	push hl
 
-	;; Decrease the width
+	ld ix,Heatmap
+	;; Draw the LH square
+
+	ld e,(iy+RowOffset_LHWidth)
 	dec e
 	bit 7,e ;; If the left most bit is set, we've gone past zero	
 	jr z,SkipLeftReset
@@ -90,36 +123,48 @@ DrawRow:
 
 	ld a,(iy+RowOffset_Hue)	 	;; Toggle the hue
 	xor 3
-	ld l,a
-	ld (iy+RowOffset_Hue),l
-	ld h,0
-	ld (ColourMaskOffsetPlus2-2),hl
+	;;ld l,a
+	ld (iy+RowOffset_Hue),a
+	;;ld h,0
+	ld (ColourMaskOffsetPlus2-2),a
 SkipLeftReset:
 	ld (iy+RowOffset_LHWidth),e
-	call DrawSquare
+	call DrawSquareFirstLine
 
+	inc hl
+	ld (hl),Palette_Black
+	inc hl
+	inc ix
 	;; Increment some of the values and draw another square
-	ld a,b
-	add (iy+RowOffset_LHWidth)	;; b{sqOne.xPos} + e{sqOne.W} 
-	inc a
-	ld b,a  			;; put the final X back into b
+	;;ld a,b
+	;;add (iy+RowOffset_LHWidth)	;; b{sqOne.xPos} + e{sqOne.W} 
+	;;inc a
+	;;ld b,a  			;; put the final X back into b
 	ld e,(iy+RowOffset_BlockWidth)	;; this one is always the standard width
-	call DrawSquare
+	call DrawSquareFirstLine
 
+	inc hl
+	ld (hl),Palette_Black
+	inc hl
+	inc ix
 	;; Another square the same as the last
-	ld a,b
-	add (iy+RowOffset_BlockWidth)
-	inc a
-	ld b,a
+	;ld a,b
+	;add (iy+RowOffset_BlockWidth)
+	;inc a
+	;ld b,a
 	ld e,(iy+RowOffset_BlockWidth)
-	call DrawSquare
+	call DrawSquareFirstLine
 	
+	inc hl
+	ld (hl),Palette_Black
+	inc hl
+	inc ix
 	;; For the final one, calculate the xPos as before
-	ld a,b
-	add (iy+RowOffset_BlockWidth)
-	inc a
-	ld b,a
-	;; Now calculate it's width
+	;ld a,b
+	;add (iy+RowOffset_BlockWidth)
+	;inc a
+	;ld b,a
+	;; Now calculate it's new width
 	ld e,(iy+RowOffset_RHWidth)
 	inc e
 
@@ -129,17 +174,24 @@ SkipLeftReset:
 	jr c,SkipRightReset 
 	;; Do right square reset
 	ld e,&00
+	
 SkipRightReset:
 	ld (iy+RowOffset_RHWidth),e
-	call DrawSquare
-	
+	call DrawSquareFirstLine
+
+	pop hl	
 ret
 
-DrawSquare:
+DrawSquareFirstLine:
 	;; INPUTS
-	;; IY Row struct
-	;; BC (x,y)
+	;; IX Heatmap address
+	;; BC (x,y) ?????????? don't think this is true anymore
 	;; E Block Width
+	;; HL screen pos
+	;; RETURNS
+	;; HL screen pos of last pixel drawn
+	;; DESTROYS
+	;; DE
 
 	;; return if the width is zero
 	ld a,e
@@ -147,73 +199,44 @@ DrawSquare:
 	jr z,_toggleHue
 
 	;; Need to maintain this value, but DE is too useful to tie up
-	ld ixl, e
+	;ld ixl, e
 
 	;; Calculate where the start of the heatmap is for this block and store it in de
 	;; Xpos - RowStartXPos + Heatmap
 	;; (B - (iy+RowOffset_XPos)) + HeatMap
 	
-	ld a,b
-	sub (iy+RowOffset_XPos)
-	ld de,HeatMap
-	add e
-	ld e,a
+;this was failing because GetScreenPos destroys bc, but can I maintain de == heatmap instead
 
-	push bc 	;; Preserving XYPos for the calling fuction
-		call GetScreenPos 	;; HL = screen position
-		
-		ld c,ixl ;; init c as a loop counter for the width
-		push hl ;; Preserving pointer to the scr address
+	;ld a,b,
+	;sub (iy+RowOffset_XPos)
+	;ld ix,HeatMap
+	;add ixl
+	;ld e,a
 
-		_squareNextByte:		
-				push ix	;; Todo this can probably be removed after refactor
-					ld a,(de) 			;; Load a byte from the heatmap
-					ld ix,&00:ColourMaskOffsetPlus2 ;; Apply the hue for this block block
-					or a,ixl
-				pop ix
-				ld (hl),a	;; HL = Screen desintation
-				inc hl
-				inc de
-				dec c
-				jr nz,_squareNextByte
-			
-				;; skip this if the current value for x is greater than the end of the row
-				;; but what is the value of x at this point??
-				ld a,0
-				sub ixl
-				jr z,_skipBlackLine
-				ld (hl),Palette_Black
-				_skipBlackLine:
-			pop hl
+	;; TODO don't think this push is needed
+	push bc 	 ;; Preserving XYPos for the calling fuction
+		ld c,e ;; init c as a loop counter for the width
+		_squareNextByte:
+			;; Can I self mod to get rid of this push
+			push ix		
+				ld a,(ix) 			;; Load a byte from the heatmap
+				ld ix,&00:ColourMaskOffsetPlus2 ;; Apply the hue for this block block
+				or a,ixl
+			pop ix
 
-			;; Now copy the line we just drew into the lines below
-			ld b,(iy+RowOffset_Height) ;; Init b as a loop counter for the Height in lines
-			dec b	;; We already drew one line
-		_squareNextLine:
-			push bc	;; Preserving the value of b as a loop counter fo t
-				ld b,h
-				ld c,l
-				Call GetNextLine
-				ld d,h
-				ld e,l
-				ld h,b
-				ld l,c
-				ld b,0
-				ld c,ixl
-				inc c
-				push de	;; Presering the scr addr of the line we just drew
-				ldir
-				pop hl 	;; But for now we need it in HL, so pop it back into there instead
-			pop bc
-		djnz _squareNextLine
+			ld (hl),a	;; HL = Screen desintation
+			inc hl
+			inc ix
+			dec c
+			jr nz,_squareNextByte
 	pop bc
 
 	_toggleHue:
-	ld hl,(ColourMaskOffsetPlus2-2)
-	ld a,l
+	ld de,(ColourMaskOffsetPlus2-2)
+	ld a,e
 	xor 3
-	ld l,a
-	ld (ColourMaskOffsetPlus2-2),hl
+	ld e,a
+	ld (ColourMaskOffsetPlus2-2),de
 ret
 
 DrawBlock:
@@ -356,6 +379,8 @@ HeatMap_2 equ %10000100	;; 1    2
 HeatMap_3 equ %00001100 ;; 2    2
 HeatMap_4 equ %11001100 ;; 3    3
 
+
+org &6000
 HeatMap:
 	db HeatMap_0
 	db %10000000
@@ -400,4 +425,4 @@ HeatMap:
 	db HeatMap_1  
 	db HeatMap_1 
 	db HeatMap_0
-	db HeatMap_4
+	db HeatMap_0
