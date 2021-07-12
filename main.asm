@@ -20,21 +20,31 @@ call DrawBackground
 ; Main Program
 ;****************************************
 MainLoop:
+	;;call DrawBackground
 	ld iy,Row1Struct
 	call DrawRow
 	call CopyRow
+	call DrawRowDivider
+
 	ld iy,Row2Struct
 	call DrawRow
 	call CopyRow
+	call DrawRowDivider
+
 	ld iy,Row3Struct
 	call DrawRow
 	call CopyRow
+	call DrawRowDivider
+
 	ld iy,Row4Struct
 	call DrawRow
 	call CopyRow
+	call DrawRowDivider
+
 	ld iy,Row5Struct
 	call DrawRow
 	call CopyRow
+	call DrawRowDivider
 _waitFrame:                                
          ld b,#F5	;; PPI Rastor port
 _waitFrameLoop:
@@ -56,32 +66,6 @@ ClearScreen:
 	ld bc,&3DFF		;; Number of bytes to clear
 	ld (hl),Palette_Background
 	ldir	
-ret
-
-CopyRow:
-	;; INPUTS 
-	;; HL = scr pos of first byte of last row 
-	;; IY = Row struct
-	ld b,(iy+RowOffset_Height)
-_copyNextLine:
-	push bc	
-		push hl
-		push hl 
-			call GetNextLine
-			ld d,h
-			ld e,l
-		pop hl
-		ld b,0
-		ld c,&30 ;; Todo calculate this from the row struct
-		ldir ;; HL first pixel of last line, de first pixel of this line, bc bytes to copy
-
-		;; HL now needs to be reset to the start of the previous row
-		pop hl
-		;; and incremented to the next row
-		call GetNextLine 
-		;; TODO I end up calling GetNextLine twice per line when I already have one of the values 
-	pop bc
-	djnz _copyNextLine
 ret
 
 DrawRow:
@@ -122,7 +106,6 @@ _drawFirstSquare:
 
 		call DrawSquareFirstLine
 
-		inc hl
 		ld (hl),Palette_Black
 		inc hl
 		inc ix
@@ -131,7 +114,6 @@ _drawFirstSquare:
 		ld e,(iy+RowOffset_BlockWidth)	;; this one is always the standard width
 		call DrawSquareFirstLine
 
-		inc hl
 		ld (hl),Palette_Black
 		inc hl
 		inc ix
@@ -140,7 +122,6 @@ _drawFirstSquare:
 		ld e,(iy+RowOffset_BlockWidth)
 		call DrawSquareFirstLine
 	
-		inc hl
 		ld (hl),Palette_Black
 		inc hl
 		inc ix
@@ -191,6 +172,58 @@ DrawSquareFirstLine:
 
 _drawFirstLineDone:
 	Call ToggleHue
+ret
+
+CopyRow:
+	;; INPUTS 
+	;; HL = scr pos of first byte of last row 
+	;; IY = Row struct
+	ld b,(iy+RowOffset_Height)
+_copyNextLine:
+	push bc	
+		push hl
+		push hl 
+			call GetNextLine
+			ld d,h
+			ld e,l
+		pop hl
+		ld b,0
+		ld c,&2A ;; Todo calculate this from the row struct
+		ldir ;; HL first pixel of last line, de first pixel of this line, bc bytes to copy
+
+		;; HL now needs to be reset to the start of the previous row
+		pop hl
+		;; and incremented to the next row
+		call GetNextLine 
+		;; TODO I end up calling GetNextLine twice per line when I already have one of the values 
+	pop bc
+	djnz _copyNextLine
+ret
+
+DrawRowDivider
+	;; INPUTS
+	;; HL = scr pos of the firt byte of the previous row
+	;; RETURNS
+	;; HL = scr pos of the first byte of the last row drawn
+	
+	call GetNextLine
+	push hl
+		ld b,&2A 		;; Row width, might eventually be dynamic
+	_rowDividerLoopOne:
+		ld (hl),Palette_Black
+		inc hl
+		djnz _rowDividerLoopOne
+	pop hl
+
+	;; Draw another black line
+	call GetNextLine
+	push hl
+		ld b,&2A 		
+	_rowDividerLoopTwo:
+		ld (hl),Palette_Black
+		inc hl
+		djnz _rowDividerLoopTwo
+	pop hl
 ret
 
 ToggleHue:

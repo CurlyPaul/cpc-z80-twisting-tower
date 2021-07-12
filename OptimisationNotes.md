@@ -100,3 +100,7 @@ DrawRowV2:
 
 72118 cycles per draw... for a maximum of 45 frames
 BUT still need to put the dividing lines back and put the sheen right
+
+## Copleting tidy up
+
+66885.. so close!!
