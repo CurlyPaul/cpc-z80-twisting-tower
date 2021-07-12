@@ -29,6 +29,6 @@ Load WinApe. Press F3 to open the editor, and from there load main.asm.
 
 Press F9 to assemble the file
 
-In the emulator type `call &8000`
+In the emulator type `call &4000`
 
 

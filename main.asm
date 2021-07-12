@@ -6,6 +6,7 @@ Palette_Black equ &3F
 
 org &4000
 ;;run start
+;;write "tower.bin"
 
 Start:
 call Screen_Init
@@ -57,18 +58,6 @@ ClearScreen:
 	ldir	
 ret
 
-DrawRowV2:
-	;; Set the starting colour
-
-	;; In this context, draw only draws one line to the screen	
-	;; Draw the RH square, including the black line if needed
-
-	;; Given IY contains a row width 
-	;; create a loop that draws squares until we run out of width
-
-	;; Draw the LH square, including the black line if needed
-
-	;; Copy the above row down the screen
 CopyRow:
 	;; INPUTS 
 	;; HL = scr pos of first byte of last row 
@@ -100,84 +89,75 @@ DrawRow:
 	;; IY Row struct
 	;; RETURNS
 	;; HL scr pos of the first pixel in the row
+	;; DESTROYS
+	;; BC, DE
 
-	;; Get the starting colour
+	;; Read the starting colour from the row's struct, and write it into the self mod location
 	ld h,0
 	ld l,(iy+RowOffset_Hue)
 	ld (ColourMaskOffsetPlus2-2),hl
 	
+	;; Start to calculate how big the first square should be
+
+	;; Load the last width and dec it by one
+	ld e,(iy+RowOffset_LHWidth)
+	dec e
+	bit 7,e ;; e >= 0
+	jr z,_drawFirstSquare
+		;; Reset to the full block width for the row
+		ld e,(iy+RowOffset_BlockWidth) 
+		ld a,(iy+RowOffset_Hue)	 	;; Toggle the hue
+		xor 3
+		ld (iy+RowOffset_Hue),a
+		ld (ColourMaskOffsetPlus2-2),a
+_drawFirstSquare:
+	ld ix,Heatmap			;; Initialise the heatmap to the start
+	ld (iy+RowOffset_LHWidth),e	;; Save the width for the next time
+
+	;; Calculate the screen position  from the xypos
 	ld b,(iy+RowOffset_XPos)
 	ld c,(iy+RowOffset_YPos)
 	call GetScreenPos 	;; HL == scr position of the fisrt pixel in the first line
-	push hl
+	push hl			;; Which we must preserve so that CopyRow can continue
 
-	ld ix,Heatmap
-	;; Draw the LH square
+		call DrawSquareFirstLine
 
-	ld e,(iy+RowOffset_LHWidth)
-	dec e
-	bit 7,e ;; If the left most bit is set, we've gone past zero	
-	jr z,SkipLeftReset
-	;; Do left hand square reset
-	ld e,(iy+RowOffset_BlockWidth) ;; Reset the width
+		inc hl
+		ld (hl),Palette_Black
+		inc hl
+		inc ix
 
-	ld a,(iy+RowOffset_Hue)	 	;; Toggle the hue
-	xor 3
-	;;ld l,a
-	ld (iy+RowOffset_Hue),a
-	;;ld h,0
-	ld (ColourMaskOffsetPlus2-2),a
-SkipLeftReset:
-	ld (iy+RowOffset_LHWidth),e
-	call DrawSquareFirstLine
+		;; The second square is always the same width
+		ld e,(iy+RowOffset_BlockWidth)	;; this one is always the standard width
+		call DrawSquareFirstLine
 
-	inc hl
-	ld (hl),Palette_Black
-	inc hl
-	inc ix
-	;; Increment some of the values and draw another square
-	;;ld a,b
-	;;add (iy+RowOffset_LHWidth)	;; b{sqOne.xPos} + e{sqOne.W} 
-	;;inc a
-	;;ld b,a  			;; put the final X back into b
-	ld e,(iy+RowOffset_BlockWidth)	;; this one is always the standard width
-	call DrawSquareFirstLine
-
-	inc hl
-	ld (hl),Palette_Black
-	inc hl
-	inc ix
-	;; Another square the same as the last
-	;ld a,b
-	;add (iy+RowOffset_BlockWidth)
-	;inc a
-	;ld b,a
-	ld e,(iy+RowOffset_BlockWidth)
-	call DrawSquareFirstLine
+		inc hl
+		ld (hl),Palette_Black
+		inc hl
+		inc ix
+		
+		;; So is the third
+		ld e,(iy+RowOffset_BlockWidth)
+		call DrawSquareFirstLine
 	
-	inc hl
-	ld (hl),Palette_Black
-	inc hl
-	inc ix
-	;; For the final one, calculate the xPos as before
-	;ld a,b
-	;add (iy+RowOffset_BlockWidth)
-	;inc a
-	;ld b,a
-	;; Now calculate it's new width
-	ld e,(iy+RowOffset_RHWidth)
-	inc e
-
-	;; Check if it's larger than the starting width
-	ld a,e
-	cp &0E	;; Width + 1
-	jr c,SkipRightReset 
-	;; Do right square reset
-	ld e,&00
+		inc hl
+		ld (hl),Palette_Black
+		inc hl
+		inc ix
 	
-SkipRightReset:
-	ld (iy+RowOffset_RHWidth),e
-	call DrawSquareFirstLine
+		;; Calculate the width of the last square, that starts at zero and get's wider each frame
+		ld e,(iy+RowOffset_RHWidth)
+		inc e
+
+		;; Check if it's larger than the starting width
+		ld a,e
+		cp &0E	;; Width + 1
+		jr c,_drawLastSquare 
+			;; Reset the last square to zero width
+			ld e,&00
+	_drawLastSquare:
+		ld (iy+RowOffset_RHWidth),e
+		call DrawSquareFirstLine
 
 	pop hl	
 ret
@@ -185,96 +165,41 @@ ret
 DrawSquareFirstLine:
 	;; INPUTS
 	;; IX Heatmap address
-	;; BC (x,y) ?????????? don't think this is true anymore
 	;; E Block Width
 	;; HL screen pos
 	;; RETURNS
 	;; HL screen pos of last pixel drawn
 	;; DESTROYS
-	;; DE
+	;; B, DE
 
 	;; return if the width is zero
 	ld a,e
 	cp 0
-	jr z,_toggleHue
-
-	;; Need to maintain this value, but DE is too useful to tie up
-	;ld ixl, e
-
-	;; Calculate where the start of the heatmap is for this block and store it in de
-	;; Xpos - RowStartXPos + Heatmap
-	;; (B - (iy+RowOffset_XPos)) + HeatMap
-	
-;this was failing because GetScreenPos destroys bc, but can I maintain de == heatmap instead
-
-	;ld a,b,
-	;sub (iy+RowOffset_XPos)
-	;ld ix,HeatMap
-	;add ixl
-	;ld e,a
-
-	;; TODO don't think this push is needed
-	push bc 	 ;; Preserving XYPos for the calling fuction
-		ld c,e ;; init c as a loop counter for the width
+	jr z,_drawFirstLineDone
+		;; TODO Change GetScreenPos to take DE = xypos and use B to pass around the width
+		
+		ld b,e ;; init c as a loop counter for the width
+		ld de,&00:ColourMaskOffsetPlus2 
 		_squareNextByte:
-			;; Can I self mod to get rid of this push
-			push ix		
-				ld a,(ix) 			;; Load a byte from the heatmap
-				ld ix,&00:ColourMaskOffsetPlus2 ;; Apply the hue for this block block
-				or a,ixl
-			pop ix
+			ld a,(ix) 	;; Load a byte from the heatmap
+			or a,e		;; Apply the hue for this block 
 
-			ld (hl),a	;; HL = Screen desintation
+			ld (hl),a	;; Draw the byte into the address in HL
 			inc hl
 			inc ix
-			dec c
-			jr nz,_squareNextByte
-	pop bc
+			djnz _squareNextByte
 
-	_toggleHue:
-	ld de,(ColourMaskOffsetPlus2-2)
-	ld a,e
-	xor 3
-	ld e,a
-	ld (ColourMaskOffsetPlus2-2),de
+_drawFirstLineDone:
+	Call ToggleHue
 ret
 
-DrawBlock:
-	;; INPUTS 
-	;; IY Row struct
-	;; De
-	ld b,(iy+RowOffset_XPos)
-	ld c,(iy+RowOffset_YPos)
-
-	call GetScreenPos 	;; HL = screen position
-	;; init the loop counters
-	
-	;; for the width we use 3(block width+1)
-	ld e,(iy+RowOffset_BlockWidth)	
-	inc e 	;; here's the +1
-	ld a,e 	;; then add it to itself 3 times
-	add e
-	add e
-	ld c,a  ;; C == Width in Bytes
-	
-	ld a,(iy+RowOffset_Height) ; Height in lines
-	add 2  	;; to make them the same as the vertical ones	
-	ld b,a 	;; B == Height in lines
-	
-	BlockNextLine:
-		push hl
-		push bc
-
-		BlockNextByte:
-			ld a,Palette_Black
-			ld (hl),a	;; HL = Screen desintation
-			inc hl
-			dec c
-			jr nz,BlockNextByte
-		pop bc
-		pop hl
-		call GetNextLine 		
-		djnz BlockNextLine	;; djnz - decreases b and jumps when it's not zero
+ToggleHue:
+	;; Flips the bits the controls if the blocks are colour one or colour two
+	;; RETURNS
+	;; A - current value
+	ld a,(ColourMaskOffsetPlus2-2)
+	xor 3
+	ld (ColourMaskOffsetPlus2-2),a
 ret
 
 InterruptHandler_Init:

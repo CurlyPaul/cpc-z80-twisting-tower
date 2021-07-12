@@ -99,4 +99,4 @@ DrawRowV2:
 ### DrawRowV2 implemented
 
 72118 cycles per draw... for a maximum of 45 frames
-BUT still need to put the deviding lines back and put the sheen right
+BUT still need to put the dividing lines back and put the sheen right
