@@ -21,6 +21,8 @@ call DrawBackground
 ;****************************************
 MainLoop:
 	;;call DrawBackground
+	call SwitchScreenBuffer
+
 	ld iy,Row1Struct
 	call DrawRow
 	call CopyRow
@@ -51,7 +53,6 @@ _waitFrameLoop:
          in a,(c)
          rra  		;; Right most bit indicates vSync is happening
          jr nc, _waitFrameLoop
-	 call SwitchScreenBuffer
 jr MainLoop
 	
 DrawBackground:
@@ -72,7 +73,7 @@ DrawRow:
 	;; INPUTS
 	;; IY Row struct
 	;; RETURNS
-	;; HL scr pos of the first pixel in the row
+	;; HL scr pos of the first pixel in the row we just drew
 	;; DESTROYS
 	;; BC, DE
 
@@ -178,31 +179,52 @@ CopyRow:
 	;; INPUTS 
 	;; HL = scr pos of first byte of last row 
 	;; IY = Row struct
+	;; RETURNS 
+	;; HL = scr pos of the first byte of the last row drawn
 	ld b,(iy+RowOffset_Height)
-_copyNextLine:
-	push bc	
-		push hl
-		push hl 
-			call GetNextLine
-			ld d,h
-			ld e,l
-		pop hl
-		ld b,0
-		ld c,&2A ;; Todo calculate this from the row struct
-		ldir ;; HL first pixel of last line, de first pixel of this line, bc bytes to copy
 
-		;; HL now needs to be reset to the start of the previous row
-		pop hl
-		;; and incremented to the next row
-		call GetNextLine 
-		;; TODO I end up calling GetNextLine twice per line when I already have one of the values 
+	;; Combinding GetNextLine's dependency on HL and LDIR's use of HL means for some furious registry swapping
+	;; but it's probably still faster than doing it manually
+
+	ld d,h
+	ld e,l
+
+_copyNextLine:
+	push bc
+		
+		;; de has the value that hl needs to have, but we need hl to use GetNextLine
+		;; and to do that hl needs the values that de currently has
+		ld b,d
+		ld c,e
+
+		ld h,d
+		ld l,e
+
+		call GetNextLine		
+		;; Now hl has the value that de needs to have
+		ld d,h
+		ld e,l
+		;; Now put the last line pos back into hl
+		ld h,b
+		ld l,c	
+		
+		push de	
+			ld b,0
+			ld c,&2A ;; Todo calculate this from the row struct
+			ldir ;; HL first pixel of last line, de first pixel of this line, bc bytes to copy
+		pop de
+
+
 	pop bc
 	djnz _copyNextLine
+
+	ld h,d
+	ld l,e
 ret
 
 DrawRowDivider
 	;; INPUTS
-	;; HL = scr pos of the firt byte of the previous row
+	;; HL = scr pos of the first byte of the previous row
 	;; RETURNS
 	;; HL = scr pos of the first byte of the last row drawn
 	
