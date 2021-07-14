@@ -20,7 +20,6 @@ call DrawBackground
 ; Main Program
 ;****************************************
 MainLoop:
-	;;call DrawBackground
 	call SwitchScreenBuffer
 
 	ld iy,Row1Struct
@@ -46,7 +45,18 @@ MainLoop:
 	ld iy,Row5Struct
 	call DrawRow
 	call CopyRow
+	call DrawRowDivider	
+
+	ld iy,Row6Struct
+	call DrawRow
+	call CopyRow
 	call DrawRowDivider
+
+	ld iy,Row7Struct
+	call DrawRow
+	call CopyRow
+	call DrawRowDivider
+
 _waitFrame:                                
          ld b,#F5	;; PPI Rastor port
 _waitFrameLoop:
@@ -301,7 +311,7 @@ RowOffset_Hue equ 6
 Row1Struct:
 	db &0C 		;; X pos
 	db &00 		;; Y pos
-	db &30 		;; Height
+	db &20 		;; Height
 	db &0D 		;; Block Width
 	db &0D 		;; Current LH square width
 	db &0  		;; Current RH square width
@@ -309,8 +319,8 @@ Row1Struct:
 
 Row2Struct:
 	db &0C 		;; X pos
-	db &32 		;; Y pos
-	db &30 		;; Height
+	db &23 		;; Y pos
+	db &10 		;; Height
 	db &0D 		;; Block Width
 	db &06 		;; Current LH square width
 	db &07 		;; Current RH square width
@@ -318,8 +328,8 @@ Row2Struct:
 
 Row3Struct:
 	db &0C 		;; X pos
-	db &64 		;; Y pos
-	db &10 		;; Height
+	db &36 		;; Y pos
+	db &1B		;; Height
 	db &0D 		;; Block Width
 	db &03 		;; Current LH square width
 	db &0A 		;; Current RH square width
@@ -327,20 +337,38 @@ Row3Struct:
 
 Row4Struct:
 	db &0C 		;; X pos
-	db &76 		;; Y pos
-	db &30 		;; Height
+	db &54 		;; Y pos
+	db &1B		;; Height
+	db &0D 		;; Block Width
+	db &09 		;; Current LH square width
+	db &05 		;; Current RH square width
+	db %00000000 	;; Starting hue
+
+Row5Struct:
+	db &0C 		;; X pos
+	db &72 		;; Y pos
+	db &1D		;; Height
+	db &0D 		;; Block Width
+	db &02 		;; Current LH square width
+	db &0B 		;; Current RH square width
+	db %00000000 	;; Starting hue
+
+Row6Struct:
+	db &0C 		;; X pos
+	db &92 		;; Y pos
+	db &10 		;; Height
 	db &0D 		;; Block Width
 	db &0B 		;; Current LH square width
 	db &02 		;; Current RH square width
 	db %00000011 	;; Starting hue
 
-Row5Struct:
+Row7Struct:
 	db &0C 		;; X pos
-	db &A8 		;; Y pos
-	db &16 		;; Height
+	db &A5 		;; Y pos
+	db &18 		;; Height
 	db &0D 		;; Block Width
-	db &09 		;; Current LH square width
-	db &04  	;; Current RH square width
+	db &07 		;; Current LH square width
+	db &06  	;; Current RH square width
 	db %00000000 	;; Starting hue
 
 read ".\libs\CPC_V2_SimpleScreenSetUp.asm"
