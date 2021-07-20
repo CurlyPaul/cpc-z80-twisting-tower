@@ -5,7 +5,7 @@ Palette_Background equ &FF
 Palette_Black equ &3F
 
 org &4000
-;;run start
+run start
 ;;write "tower.bin"
 
 Start:
@@ -21,6 +21,10 @@ call DrawBackground
 ;****************************************
 MainLoop:
 	call SwitchScreenBuffer
+
+	ld a,(Tick)
+	inc a
+	ld (Tick),a
 
 	ld iy,Row1Struct
 	call DrawRow
@@ -95,8 +99,10 @@ DrawRow:
 	;; Start to calculate how big the first square should be
 
 	;; Load the last width and dec it by one
-	ld e,(iy+RowOffset_LHWidth)
-	dec e
+	ld a,(iy+RowOffset_LHWidth)
+	sub (iy+RowOffset_Velocity)
+	ld e,a
+	 
 	bit 7,e ;; e >= 0
 	jr z,_drawFirstSquare
 		;; Reset to the full block width for the row
@@ -138,8 +144,9 @@ _drawFirstSquare:
 		inc ix
 	
 		;; Calculate the width of the last square, that starts at zero and get's wider each frame
-		ld e,(iy+RowOffset_RHWidth)
-		inc e
+		ld a,(iy+RowOffset_RHWidth)
+		add (iy+RowOffset_Velocity)
+		ld e,a
 
 		;; Check if it's larger than the starting width
 		ld a,e
@@ -299,6 +306,7 @@ ret
 ScreenStartAddressFlag:	db 48  		; 16 = &4000 32 = &8000 48 = &C000 ;; TODO Keiths example shows how to bitshift these
 ScreenOverflowAddress: 	dw &BFFF
 BackBufferAddress: 	dw &8000 
+Tick			db 0
 
 RowOffset_XPos equ 0
 RowOffset_YPos equ 1
@@ -307,6 +315,7 @@ RowOffset_BlockWidth equ 3
 RowOffset_LHWidth equ 4
 RowOffset_RHWidth equ 5
 RowOffset_Hue equ 6
+RowOffset_Velocity equ 7
 
 Row1Struct:
 	db &0C 		;; X pos
@@ -316,6 +325,7 @@ Row1Struct:
 	db &0D 		;; Current LH square width
 	db &0  		;; Current RH square width
 	db %00000000 	;; Starting hue
+	db 1		;; Velocity
 
 Row2Struct:
 	db &0C 		;; X pos
@@ -325,6 +335,7 @@ Row2Struct:
 	db &06 		;; Current LH square width
 	db &07 		;; Current RH square width
 	db %00000011 	;; Starting hue
+	db 2		;; Velocity
 
 Row3Struct:
 	db &0C 		;; X pos
@@ -334,15 +345,25 @@ Row3Struct:
 	db &03 		;; Current LH square width
 	db &0A 		;; Current RH square width
 	db %00000000 	;; Starting hue
+	db 1		;; Velocity
 
 Row4Struct:
 	db &0C 		;; X pos
 	db &54 		;; Y pos
-	db &1B		;; Height
+	db &1B 		;; Height
 	db &0D 		;; Block Width
 	db &09 		;; Current LH square width
-	db &05 		;; Current RH square width
-	db %00000000 	;; Starting hue
+	db &04  		;; Current RH square width
+	db %00000011 	;; Starting hue
+	db 1		;; Velocity
+	;db &0C 		;; X pos
+	;db &54 		;; Y pos
+	;db &1B		;; Height
+	;db &0D 		;; Block Width
+	;db &0A 		;; Current LH square width
+	;db &04 		;; Current RH square width
+	;db %00000011 	;; Starting hue
+	;db 1		;; Velocity
 
 Row5Struct:
 	db &0C 		;; X pos
@@ -352,6 +373,7 @@ Row5Struct:
 	db &02 		;; Current LH square width
 	db &0B 		;; Current RH square width
 	db %00000000 	;; Starting hue
+	db 1		;; Velocity
 
 Row6Struct:
 	db &0C 		;; X pos
@@ -361,6 +383,7 @@ Row6Struct:
 	db &0B 		;; Current LH square width
 	db &02 		;; Current RH square width
 	db %00000011 	;; Starting hue
+	db 3		;; Velocity
 
 Row7Struct:
 	db &0C 		;; X pos
@@ -370,6 +393,7 @@ Row7Struct:
 	db &07 		;; Current LH square width
 	db &06  	;; Current RH square width
 	db %00000000 	;; Starting hue
+	db 1		;; Velocity
 
 read ".\libs\CPC_V2_SimpleScreenSetUp.asm"
 read ".\libs\CPC_V1_SimplePalette.asm"
