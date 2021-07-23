@@ -19,6 +19,51 @@ call DrawBackground
 ;****************************************
 ; Main Program
 ;****************************************
+IntroFirstRowLoop:
+	call SwitchScreenBuffer
+	call DrawBackground
+	
+	ld IY,Row7Struct
+	ld a,(IY+RowOffset_YPos)
+	inc a
+	ld (IY+RowOffset_YPos),a
+	sub &A5		
+	jr z, IntroSecondRowLoop
+
+	call DrawRow
+	call CopyRow
+	call DrawRowDivider
+
+	Call WaitFrame
+	jr IntroFirstRowLoop
+
+IntroSecondRowLoop:
+	call SwitchScreenBuffer
+	call DrawBackground
+	
+	ld IY,Row6Struct
+	ld a,(IY+RowOffset_YPos)
+	inc a
+	inc a
+	ld (IY+RowOffset_YPos),a
+	sub &92		
+	jr z, MainLoop
+
+	call DrawRow
+	call CopyRow
+	call DrawRowDivider
+
+	ld iy,Row7Struct
+	call DrawRow
+	call CopyRow
+	call DrawRowDivider
+
+	Call WaitFrame
+	jr IntroSecondRowLoop
+
+;; This will work, but it will be verbose
+
+
 MainLoop:
 	call SwitchScreenBuffer
 
@@ -61,14 +106,17 @@ MainLoop:
 	call CopyRow
 	call DrawRowDivider
 
-_waitFrame:                                
+	call WaitFrame
+jr MainLoop
+
+WaitFrame:                                
          ld b,#F5	;; PPI Rastor port
 _waitFrameLoop:
          in a,(c)
          rra  		;; Right most bit indicates vSync is happening
          jr nc, _waitFrameLoop
-jr MainLoop
-	
+ret
+
 DrawBackground:
 	call ClearScreen
 ret
@@ -87,7 +135,7 @@ DrawRow:
 	;; INPUTS
 	;; IY Row struct
 	;; RETURNS
-	;; HL scr pos of the first pixel in the row we just drew
+	;; HL scr pos of the first pixel in the line we just drew
 	;; DESTROYS
 	;; BC, DE
 
@@ -208,7 +256,6 @@ CopyRow:
 
 _copyNextLine:
 	push bc
-		
 		;; de has the value that hl needs to have, but we need hl to use GetNextLine
 		;; and to do that hl needs the values that de currently has
 		ld b,d
@@ -317,6 +364,21 @@ RowOffset_RHWidth equ 5
 RowOffset_Hue equ 6
 RowOffset_Velocity equ 7
 
+XPos_SineWave:
+	db 0
+	db 1
+	db 2
+	db 3
+	db 4
+	db 5
+	db 6
+	db 7
+	db 8
+	db 9 
+	db 10
+	db 11
+	db 12	;; TOOD replace with an actual sine wave
+
 Row1Struct:
 	db &0C 		;; X pos
 	db &00 		;; Y pos
@@ -353,17 +415,9 @@ Row4Struct:
 	db &1B 		;; Height
 	db &0D 		;; Block Width
 	db &09 		;; Current LH square width
-	db &04  		;; Current RH square width
+	db &04  	;; Current RH square width
 	db %00000011 	;; Starting hue
 	db 1		;; Velocity
-	;db &0C 		;; X pos
-	;db &54 		;; Y pos
-	;db &1B		;; Height
-	;db &0D 		;; Block Width
-	;db &0A 		;; Current LH square width
-	;db &04 		;; Current RH square width
-	;db %00000011 	;; Starting hue
-	;db 1		;; Velocity
 
 Row5Struct:
 	db &0C 		;; X pos
@@ -377,7 +431,7 @@ Row5Struct:
 
 Row6Struct:
 	db &0C 		;; X pos
-	db &92 		;; Y pos
+	db &00 		;; Y pos
 	db &10 		;; Height
 	db &0D 		;; Block Width
 	db &0B 		;; Current LH square width
@@ -387,7 +441,7 @@ Row6Struct:
 
 Row7Struct:
 	db &0C 		;; X pos
-	db &A5 		;; Y pos
+	db &00 		;; Y pos
 	db &18 		;; Height
 	db &0D 		;; Block Width
 	db &07 		;; Current LH square width
@@ -411,7 +465,7 @@ HeatMap_2 equ %10000100	;; 1    2
 HeatMap_3 equ %00001100 ;; 2    2
 HeatMap_4 equ %11001100 ;; 3    3
 
-
+;; TODO I'm sure align can help me here but I don't seem to uderstand it correctly yet
 org &6000
 HeatMap:
 	db HeatMap_0
