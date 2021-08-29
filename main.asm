@@ -6,7 +6,7 @@ Palette_Black equ &3F
 
 org &4000
 run start
-;;write "tower.bin"
+write ".\artifacts\tower.bin"
 
 Start:
 call Screen_Init
@@ -412,7 +412,7 @@ HeatMap_3 equ %00001100 ;; 2    2
 HeatMap_4 equ %11001100 ;; 3    3
 
 
-org &6000
+;org &6000
 HeatMap:
 	db HeatMap_0
 	db %10000000
