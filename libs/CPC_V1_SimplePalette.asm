@@ -31,10 +31,10 @@ Palette_Init:
 	call SetupColours
 ret
 
-Palette_AllBlack:
+Palette_AllBackground:
 	ld b,17			;; 16 colours + 1 border
 	xor a			;; start with pen 0
-	ld e,&54
+	ld e,&46
 DoColours_AllBlack:
 	push bc			;; need to stash b as we are using it for our loop and need it
 				;; below to write to the port 		

@@ -6,7 +6,7 @@ Palette_Black equ &3F
 
 org &4000
 run start
-write ".\artifacts\tower.bin"
+;write ".\artifacts\tower.bin"
 
 Start:
 di
@@ -14,23 +14,399 @@ im 1
 ld hl,&C9FB			;; C9 FB are the bytes for the Z80 opcodes EI:RET
 ld (&0038),hl			;; setup interrupt handler
 
-ld sp,&7fff
+ld sp,&7fff			;; Using 8000-BFFF for video, so move this out of the way
 
-call Palette_AllBlack
+call Palette_AllBackground	;; Clear the screen
 call Screen_Init
 ei
-call DrawRows
+call ClearScreen
 call SwitchScreenBuffer
-call DrawRows
+call ClearScreen
+call WaitFrame
 
-_waitInitialFrame:                                
-         ld b,#F5	;; PPI Rastor port
-_waitInitialFrameLoop:
-         in a,(c)
-         rra  		;; Right most bit indicates vSync is happening
-         jr nc, _waitInitialFrameLoop
+call Palette_Init		;; Now set the correct colours and start drawing to the screen
 
-call Palette_Init
+ld b,&FF	;; 50 * 2 vsyncs == 2seconds
+WaitFirstPauseLoop:	
+	push bc
+		call WaitFrame
+	pop bc
+	djnz WaitFirstPauseLoop
+
+ld b,50*2
+PhaseOneIntroLoop:
+	push bc
+		call SwitchScreenBuffer
+
+		ld iy,Row1Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		call WaitFrame
+	pop bc
+	djnz PhaseOneIntroLoop
+
+ld b,15
+PhaseTwoIntroLoop:
+	push bc
+		call SwitchScreenBuffer
+
+		ld iy,Row1Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row7Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		call WaitFrame
+	pop bc
+	djnz PhaseTwoIntroLoop
+
+
+ld b,10
+PhaseThreeIntroLoop:
+	push bc
+		call SwitchScreenBuffer
+
+		ld iy,Row1Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row5Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row7Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		call WaitFrame
+	pop bc
+	djnz PhaseThreeIntroLoop
+
+ld b,20
+PhaseFourIntroLoop:
+	push bc
+		call SwitchScreenBuffer
+
+		ld iy,Row1Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row4Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row5Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row7Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row10Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		call WaitFrame
+	pop bc
+	djnz PhaseFourIntroLoop
+
+ld b,15
+PhaseFiveIntroLoop:
+	push bc
+		call SwitchScreenBuffer
+
+		ld iy,Row1Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row2Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+
+		ld iy,Row4Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row5Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row7Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row10Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		call WaitFrame
+	pop bc
+	djnz PhaseFiveIntroLoop
+
+
+ld b,12
+PhaseSixIntroLoop:
+	push bc
+		call SwitchScreenBuffer
+
+		ld iy,Row1Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row2Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row3Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row4Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row5Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row7Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row10Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		call WaitFrame
+	pop bc
+	djnz PhaseSixIntroLoop
+
+ld b,4
+PhaseSevenIntroLoop:
+	push bc
+		call SwitchScreenBuffer
+
+		ld iy,Row1Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row2Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row3Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row4Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row5Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row6Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row7Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row10Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		call WaitFrame
+	pop bc
+	djnz PhaseSevenIntroLoop
+
+ld b,4
+PhaseEightIntroLoop:
+	push bc
+		call SwitchScreenBuffer
+
+		ld iy,Row1Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row2Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row3Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row4Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row5Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row6Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row7Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row9Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		ld iy,Row10Struct
+		call DrawRow
+		call CopyRow
+		call DrawRowDivider
+
+		call WaitFrame
+	pop bc
+	djnz PhaseEightIntroLoop
+
+
+ld b,30
+PauseBeforeSpinning
+	push bc
+		call SwitchScreenBuffer
+		call DrawRows
+		call WaitFrame
+	pop bc
+	djnz PauseBeforeSpinning
+
+ld iy,Row10Struct
+ld (iy+RowOffset_Velocity),1
+ld b,50
+VelocityOneWait
+	push bc
+		call SwitchScreenBuffer
+		call DrawRows
+		call WaitFrame
+	pop bc
+	djnz VelocityOneWait
+
+ld iy,Row9Struct
+ld (iy+RowOffset_Velocity),1
+ld b,20
+VelocityTwoWait
+	push bc
+		call SwitchScreenBuffer
+		call DrawRows
+		call WaitFrame
+	pop bc
+	djnz VelocityTwoWait
+
+ld iy,Row8Struct
+ld (iy+RowOffset_Velocity),1
+ld b,10
+VelocityThreeWait
+	push bc
+		call SwitchScreenBuffer
+		call DrawRows
+		call WaitFrame
+	pop bc
+	djnz VelocityThreeWait
+
+
+ld iy,Row7Struct
+ld (iy+RowOffset_Velocity),1
+ld b,10
+VelocityFourWait
+	push bc
+		call SwitchScreenBuffer
+		call DrawRows
+		call WaitFrame
+	pop bc
+	djnz VelocityFourWait
+
+
+ld hl,RowSpinArray
+ld a,(hl)
+SpinNextRow:
+	ld iyl,a
+	inc hl
+	ld a,(hl)
+	ld iyh,a
+	ld (iy+RowOffset_Velocity),1
+	push hl
+		ld b,5
+		VelocityFiveWait
+			push bc
+				call SwitchScreenBuffer
+				call DrawRows
+				call WaitFrame
+			pop bc
+		djnz VelocityFiveWait
+	pop hl
+	inc hl
+	ld a,(hl)
+	cp 0
+	jr nz,SpinNextRow	
+
+ld b,40
+PauseAfterSpinning
+	push bc
+		call SwitchScreenBuffer
+		call DrawRows
+		call WaitFrame
+	pop bc
+	djnz PauseAfterSpinning
+
+ld iy,Row2Struct
+ld (iy+RowOffset_Velocity),2
+ld iy,Row6Struct
+ld (iy+RowOffset_Velocity),2
+ld iy,Row9Struct
+ld (iy+RowOffset_Velocity),2
 
 ;****************************************
 ; Main Program
@@ -38,13 +414,16 @@ call Palette_Init
 MainLoop:
 	call SwitchScreenBuffer
 	call DrawRows
-_waitFrame:                                
+	call WaitFrame
+jr MainLoop
+
+WaitFrame:                                
          ld b,#F5	;; PPI Rastor port
 _waitFrameLoop:
          in a,(c)
          rra  		;; Right most bit indicates vSync is happening
          jr nc, _waitFrameLoop
-jr MainLoop
+ret
 
 DrawRows:
 	ld iy,Row1Struct
@@ -97,7 +476,17 @@ DrawRows:
 	call CopyRow
 	call DrawRowDivider
 ret
-	
+
+ClearScreen:
+	ld hl,(BackBufferAddress)
+	ld d,h
+	ld e,l
+	inc de
+	ld bc,&3DFF		;; Number of bytes to clear
+	ld (hl),Palette_Background
+	ldir	
+ret
+
 DrawRow:
 	;; INPUTS
 	;; IY Row struct
@@ -239,7 +628,7 @@ _copyNextLine:
 		;; Now put the last line pos back into hl
 		ld h,b
 		ld l,c	
-		
+	
 		push de	
 			ld b,0
 			ld c,&2A ;; Todo calculate this from the row struct
@@ -313,7 +702,7 @@ Row1Struct:
 	db &0D 		;; Current LH square width
 	db &0  		;; Current RH square width
 	db %00000000 	;; Starting hue
-	db 1		;; Velocity
+	db 0		;; Velocity
 
 Row2Struct:
 	db &00 		;; X pos
@@ -323,7 +712,7 @@ Row2Struct:
 	db &06 		;; Current LH square width
 	db &07 		;; Current RH square width
 	db %00000011 	;; Starting hue
-	db 2		;; Velocity
+	db 0		;; Velocity
 
 Row3Struct:
 	db &00 		;; X pos
@@ -333,7 +722,7 @@ Row3Struct:
 	db &03 		;; Current LH square width
 	db &0A 		;; Current RH square width
 	db %00000000 	;; Starting hue
-	db 1		;; Velocity
+	db 0		;; Velocity
 
 Row4Struct:
 	db &00 		;; X pos
@@ -343,7 +732,7 @@ Row4Struct:
 	db &09 		;; Current LH square width
 	db &04  		;; Current RH square width
 	db %00000011 	;; Starting hue
-	db 1		;; Velocity
+	db 0		;; Velocity
 
 Row5Struct:
 	db &00 		;; X pos
@@ -353,7 +742,7 @@ Row5Struct:
 	db &02 		;; Current LH square width
 	db &0B 		;; Current RH square width
 	db %00000000 	;; Starting hue
-	db 1		;; Velocity
+	db 0		;; Velocity
 
 Row6Struct:
 	db &00 		;; X pos
@@ -363,7 +752,7 @@ Row6Struct:
 	db &0B 		;; Current LH square width
 	db &02 		;; Current RH square width
 	db %00000011 	;; Starting hue
-	db 3		;; Velocity
+	db 0		;; Velocity
 
 Row7Struct:
 	db &00 		;; X pos
@@ -373,7 +762,7 @@ Row7Struct:
 	db &08 		;; Current LH square width
 	db &05  	;; Current RH square width
 	db %00000000 	;; Starting hue
-	db 1		;; Velocity
+	db 0		;; Velocity
 
 Row8Struct:
 	db &00 		;; X pos
@@ -383,17 +772,17 @@ Row8Struct:
 	db &07 		;; Current LH square width
 	db &06  	;; Current RH square width
 	db %00000000 	;; Starting hue
-	db 1		;; Velocity
+	db 0		;; Velocity
 
 Row9Struct:
 	db &00 		;; X pos
 	db &DB 		;; Y pos
 	db &10 		;; Height
 	db &0D 		;; Block Width
-	db &07 		;; Current LH square width
-	db &06  	;; Current RH square width
+	db &0A 		;; Current LH square width
+	db &03  	;; Current RH square width
 	db %00000011 	;; Starting hue
-	db 2		;; Velocity
+	db 0		;; Velocity
 	
 Row10Struct:
 	db &00 		;; X pos
@@ -403,7 +792,18 @@ Row10Struct:
 	db &07 		;; Current LH square width
 	db &06  	;; Current RH square width
 	db %00000000 	;; Starting hue
-	db 1		;; Velocity
+	db 0		;; Velocity
+
+;; Used during start up to save some repitition
+RowSpinArray:
+	dw Row6Struct
+	dw Row5Struct
+	dw Row4Struct
+	dw Row3Struct
+	dw Row2Struct
+	dw Row1Struct
+	db 0
+
 read ".\libs\CPC_V2_SimpleScreenSetUp.asm"
 read ".\libs\CPC_V1_SimplePalette.asm"
 
