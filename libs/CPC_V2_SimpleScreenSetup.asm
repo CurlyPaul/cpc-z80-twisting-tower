@@ -20,13 +20,13 @@ CRTC_C000 equ 48
 
 CRTCOptions:
 	defb &3f	; R0 - Horizontal Total
-	defb 32	 	; R1 - Horizontal Displayed  (32 chars wide)
-	defb 42		; R2 - Horizontal Sync Position (centralises screen)
+	defb 21	 	; R1 - Horizontal Displayed  (chars wide)
+	defb 36		; R2 - Horizontal Sync Position (centralises screen)
 	defb &86	; R3 - Horizontal and Vertical Sync Widths
 	defb 38		; R4 - Vertical Total
 	defb 0		; R5 - Vertical Adjust
-	defb 24		; R6 - Vertical Displayed (24 chars tall)
-	defb 31		; R7 - Vertical Sync Position (centralises screen)
+	defb 34		; R6 - Vertical Displayed (chars tall)
+	defb 35		; R7 - Vertical Sync Position (centralises screen)
 	defb 0		; R8 - Interlace
 	defb 7		; R9 - Max Raster 
 	defb 0		; R10 - Cursor (not used)
@@ -36,8 +36,8 @@ CRTCOptions:
 
 Screen_Init:
 	;; Sets the screen to 16 colour/160 wide mode
-	ld a,0
-	call &BC0E	; scr_set_mode 0 - 16 colors
+	ld bc,&7F00+128+4+8+0
+	out (c),c
 	
 	;; Set all of the CRTC options
 	ld hl,CrtcOptions	
@@ -101,7 +101,7 @@ GetNextLine:
 _screenBankMod_Minus1:
 	bit 7,h		;Change this to bit 6,h if your screen is at &8000!
 	jr nz,_getNextLineDone
-	ld de,&C040
+	ld de,&C02a 	;; x40  bytes 
 	add hl,de
 _getNextLineDone:
 ret
@@ -148,26 +148,37 @@ ret
 scr_addr_table
 align2
 	defw &0000,&0800,&1000,&1800,&2000,&2800,&3000,&3800
-	defw &0040,&0840,&1040,&1840,&2040,&2840,&3040,&3840
-	defw &0080,&0880,&1080,&1880,&2080,&2880,&3080,&3880
-	defw &00C0,&08C0,&10C0,&18C0,&20C0,&28C0,&30C0,&38C0
-	defw &0100,&0900,&1100,&1900,&2100,&2900,&3100,&3900
-	defw &0140,&0940,&1140,&1940,&2140,&2940,&3140,&3940
-	defw &0180,&0980,&1180,&1980,&2180,&2980,&3180,&3980
-	defw &01C0,&09C0,&11C0,&19C0,&21C0,&29C0,&31C0,&39C0
-	defw &0200,&0A00,&1200,&1A00,&2200,&2A00,&3200,&3A00
-	defw &0240,&0A40,&1240,&1A40,&2240,&2A40,&3240,&3A40
-	defw &0280,&0A80,&1280,&1A80,&2280,&2A80,&3280,&3A80
-	defw &02C0,&0AC0,&12C0,&1AC0,&22C0,&2AC0,&32C0,&3AC0
-	defw &0300,&0B00,&1300,&1B00,&2300,&2B00,&3300,&3B00
-	defw &0340,&0B40,&1340,&1B40,&2340,&2B40,&3340,&3B40
-	defw &0380,&0B80,&1380,&1B80,&2380,&2B80,&3380,&3B80
-	defw &03C0,&0BC0,&13C0,&1BC0,&23C0,&2BC0,&33C0,&3BC0
-	defw &0400,&0C00,&1400,&1C00,&2400,&2C00,&3400,&3C00
-	defw &0440,&0C40,&1440,&1C40,&2440,&2C40,&3440,&3C40
-	defw &0480,&0C80,&1480,&1C80,&2480,&2C80,&3480,&3C80
-	defw &04C0,&0CC0,&14C0,&1CC0,&24C0,&2CC0,&34C0,&3CC0
-	defw &0500,&0D00,&1500,&1D00,&2500,&2D00,&3500,&3D00
+	defw &002A,&082A,&102A,&182A,&202A,&282A,&302A,&382A
+	defw &0054,&0854,&1054,&1854,&2054,&2854,&3054,&3854
+	defw &007E,&087E,&107E,&187E,&207E,&287E,&307E,&387E
+	defw &00A8,&08A8,&10A8,&18A8,&20A8,&28A8,&30A8,&38A8
+	defw &00D2,&08D2,&10D2,&18D2,&20D2,&28D2,&30D2,&38D2
+	defw &00FC,&08FC,&10FC,&18FC,&20FC,&28FC,&30FC,&38FC
+	defw &0126,&0926,&1126,&1926,&2126,&2926,&3126,&3926
+	defw &0150,&0950,&1150,&1950,&2150,&2950,&3150,&3950
+	defw &017A,&097A,&117A,&197A,&217A,&297A,&317A,&397A
+	defw &01A4,&09A4,&11A4,&19A4,&21A4,&29A4,&31A4,&39A4
+	defw &01CE,&09CE,&11CE,&19CE,&21CE,&29CE,&31CE,&39CE
+	defw &01F8,&09F8,&11F8,&19F8,&21F8,&29F8,&31F8,&39F8
+	defw &0222,&0A22,&1222,&1A22,&2222,&2A22,&3222,&3A22
+	defw &024C,&0A4C,&124C,&1A4C,&224C,&2A4C,&324C,&3A4C
+	defw &0276,&0A76,&1276,&1A76,&2276,&2A76,&3276,&3A76
+	defw &02A0,&0AA0,&12A0,&1AA0,&22A0,&2AA0,&32A0,&3AA0
+	defw &02CA,&0ACA,&12CA,&1ACA,&22CA,&2ACA,&32CA,&3ACA
+	defw &02F4,&0AF4,&12F4,&1AF4,&22F4,&2AF4,&32F4,&3AF4
+	defw &031E,&0B1E,&131E,&1B1E,&231E,&2B1E,&331E,&3B1E
+	defw &0348,&0B48,&1348,&1B48,&2348,&2B48,&3348,&3B48
+	defw &0372,&0B72,&1372,&1B72,&2372,&2B72,&3372,&3B72
+	defw &039C,&0B9C,&139C,&1B9C,&239C,&2B9C,&339C,&3B9C
+	defw &03C6,&0BC6,&13C6,&1BC6,&23C6,&2BC6,&33C6,&3BC6
+	defw &03F0,&0BF0,&13F0,&1BF0,&23F0,&2BF0,&33F0,&3BF0
+	defw &041A,&0C1A,&141A,&1C1A,&241A,&2C1A,&341A,&3C1A
+	defw &0444,&0C44,&1444,&1C44,&2444,&2C44,&3444,&3C44
+	defw &046E,&0C6E,&146E,&1C6E,&246E,&2C6E,&346E,&3C6E
+	defw &0498,&0C98,&1498,&1C98,&2498,&2C98,&3498,&3C98
+	defw &04C2,&0CC2,&14C2,&1CC2,&24C2,&2CC2,&34C2,&3CC2
+	defw &04EC,&0CEC,&14EC,&1CEC,&24EC,&2CEC,&34EC,&3CEC
+	defw &0516,&0D16,&1516,&1D16,&2516,&2D16,&3516,&3D16
 	defw &0540,&0D40,&1540,&1D40,&2540,&2D40,&3540,&3D40
-	defw &0580,&0D80,&1580,&1D80,&2580,&2D80,&3580,&3D80
-	defw &05C0,&0DC0,&15C0,&1DC0,&25C0,&2DC0,&35C0,&3DC0
+	defw &056A,&0D6A,&156A,&1D6A,&256A,&2D6A,&356A,&3D6A
+

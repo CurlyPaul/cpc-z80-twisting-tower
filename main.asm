@@ -9,23 +9,44 @@ run start
 write ".\artifacts\tower.bin"
 
 Start:
+di
+im 1
+ld hl,&C9FB			;; C9 FB are the bytes for the Z80 opcodes EI:RET
+ld (&0038),hl			;; setup interrupt handler
+
+ld sp,&7fff
+
+call Palette_AllBlack
 call Screen_Init
-call Palette_Init
-call InterruptHandler_Init
-call DrawBackground
+ei
+call DrawRows
 call SwitchScreenBuffer
-call DrawBackground
+call DrawRows
+
+_waitInitialFrame:                                
+         ld b,#F5	;; PPI Rastor port
+_waitInitialFrameLoop:
+         in a,(c)
+         rra  		;; Right most bit indicates vSync is happening
+         jr nc, _waitInitialFrameLoop
+
+call Palette_Init
 
 ;****************************************
 ; Main Program
 ;****************************************
 MainLoop:
 	call SwitchScreenBuffer
+	call DrawRows
+_waitFrame:                                
+         ld b,#F5	;; PPI Rastor port
+_waitFrameLoop:
+         in a,(c)
+         rra  		;; Right most bit indicates vSync is happening
+         jr nc, _waitFrameLoop
+jr MainLoop
 
-	ld a,(Tick)
-	inc a
-	ld (Tick),a
-
+DrawRows:
 	ld iy,Row1Struct
 	call DrawRow
 	call CopyRow
@@ -61,28 +82,22 @@ MainLoop:
 	call CopyRow
 	call DrawRowDivider
 
-_waitFrame:                                
-         ld b,#F5	;; PPI Rastor port
-_waitFrameLoop:
-         in a,(c)
-         rra  		;; Right most bit indicates vSync is happening
-         jr nc, _waitFrameLoop
-jr MainLoop
+	ld iy,Row8Struct
+	call DrawRow
+	call CopyRow
+	call DrawRowDivider
+
+	ld iy,Row9Struct
+	call DrawRow
+	call CopyRow
+	call DrawRowDivider
+
+	ld iy,Row10Struct
+	call DrawRow
+	call CopyRow
+	call DrawRowDivider
+ret
 	
-DrawBackground:
-	call ClearScreen
-ret
-
-ClearScreen:
-	ld hl,(BackBufferAddress)
-	ld d,h
-	ld e,l
-	inc de
-	ld bc,&3DFF		;; Number of bytes to clear
-	ld (hl),Palette_Background
-	ldir	
-ret
-
 DrawRow:
 	;; INPUTS
 	;; IY Row struct
@@ -274,39 +289,12 @@ ToggleHue:
 	ld (ColourMaskOffsetPlus2-2),a
 ret
 
-InterruptHandler_Init:
-	; Sets the rastor interrupt to our interrupt handler
-	di
-		ld a,&C3		; jp op code
-		ld (&0038),a		; &0038 is executed when the rastor interrupt fires
-		ld hl,InterruptHandler
-		ld (&0039),hl		; write jp InterruptHandler into the target address
-	ei
-ret
-
-InterruptHandler:
-;; Not currently using but leaving this here so the palette keeps working
-
-;;	exx
-;;	ex af,af'
-;;		ld b,&F5 	; The PPI (Programmable Peripheral Interface) is a device which gives us info about the screen
-;;		in a,(c)	; read a from port (bc)
-;;		rra 		; right most bit indicates vsync, so push it into the carry
-;;		jp nc,InterruptHandlerReturn
-;;
-;;	InterruptHandlerReturn: 
-;;	exx
-;;	ex af,af'
-	ei
-ret
-
 ;****************************************
 ; Variables
 ;****************************************
 ScreenStartAddressFlag:	db 48  		; 16 = &4000 32 = &8000 48 = &C000 ;; TODO Keiths example shows how to bitshift these
 ScreenOverflowAddress: 	dw &BFFF
 BackBufferAddress: 	dw &8000 
-Tick			db 0
 
 RowOffset_XPos equ 0
 RowOffset_YPos equ 1
@@ -318,9 +306,9 @@ RowOffset_Hue equ 6
 RowOffset_Velocity equ 7
 
 Row1Struct:
-	db &0C 		;; X pos
+	db &00 		;; X pos
 	db &00 		;; Y pos
-	db &20 		;; Height
+	db &19 		;; Height
 	db &0D 		;; Block Width
 	db &0D 		;; Current LH square width
 	db &0  		;; Current RH square width
@@ -328,8 +316,8 @@ Row1Struct:
 	db 1		;; Velocity
 
 Row2Struct:
-	db &0C 		;; X pos
-	db &23 		;; Y pos
+	db &00 		;; X pos
+	db &1c 		;; Y pos
 	db &10 		;; Height
 	db &0D 		;; Block Width
 	db &06 		;; Current LH square width
@@ -338,8 +326,8 @@ Row2Struct:
 	db 2		;; Velocity
 
 Row3Struct:
-	db &0C 		;; X pos
-	db &36 		;; Y pos
+	db &00 		;; X pos
+	db &2F 		;; Y pos
 	db &1B		;; Height
 	db &0D 		;; Block Width
 	db &03 		;; Current LH square width
@@ -348,26 +336,18 @@ Row3Struct:
 	db 1		;; Velocity
 
 Row4Struct:
-	db &0C 		;; X pos
-	db &54 		;; Y pos
+	db &00 		;; X pos
+	db &4D 		;; Y pos
 	db &1B 		;; Height
 	db &0D 		;; Block Width
 	db &09 		;; Current LH square width
 	db &04  		;; Current RH square width
 	db %00000011 	;; Starting hue
 	db 1		;; Velocity
-	;db &0C 		;; X pos
-	;db &54 		;; Y pos
-	;db &1B		;; Height
-	;db &0D 		;; Block Width
-	;db &0A 		;; Current LH square width
-	;db &04 		;; Current RH square width
-	;db %00000011 	;; Starting hue
-	;db 1		;; Velocity
 
 Row5Struct:
-	db &0C 		;; X pos
-	db &72 		;; Y pos
+	db &00 		;; X pos
+	db &6B 		;; Y pos
 	db &1D		;; Height
 	db &0D 		;; Block Width
 	db &02 		;; Current LH square width
@@ -376,8 +356,8 @@ Row5Struct:
 	db 1		;; Velocity
 
 Row6Struct:
-	db &0C 		;; X pos
-	db &92 		;; Y pos
+	db &00 		;; X pos
+	db &8B 		;; Y pos
 	db &10 		;; Height
 	db &0D 		;; Block Width
 	db &0B 		;; Current LH square width
@@ -386,15 +366,44 @@ Row6Struct:
 	db 3		;; Velocity
 
 Row7Struct:
-	db &0C 		;; X pos
-	db &A5 		;; Y pos
+	db &00 		;; X pos
+	db &9e 		;; Y pos
 	db &18 		;; Height
+	db &0D 		;; Block Width
+	db &08 		;; Current LH square width
+	db &05  	;; Current RH square width
+	db %00000000 	;; Starting hue
+	db 1		;; Velocity
+
+Row8Struct:
+	db &00 		;; X pos
+	db &B9 		;; Y pos
+	db &1F 		;; Height	
 	db &0D 		;; Block Width
 	db &07 		;; Current LH square width
 	db &06  	;; Current RH square width
 	db %00000000 	;; Starting hue
 	db 1		;; Velocity
 
+Row9Struct:
+	db &00 		;; X pos
+	db &DB 		;; Y pos
+	db &10 		;; Height
+	db &0D 		;; Block Width
+	db &07 		;; Current LH square width
+	db &06  	;; Current RH square width
+	db %00000011 	;; Starting hue
+	db 2		;; Velocity
+	
+Row10Struct:
+	db &00 		;; X pos
+	db &EE 		;; Y pos
+	db &1C 		;; Height
+	db &0D 		;; Block Width
+	db &07 		;; Current LH square width
+	db &06  	;; Current RH square width
+	db %00000000 	;; Starting hue
+	db 1		;; Velocity
 read ".\libs\CPC_V2_SimpleScreenSetUp.asm"
 read ".\libs\CPC_V1_SimplePalette.asm"
 
@@ -411,8 +420,6 @@ HeatMap_2 equ %10000100	;; 1    2
 HeatMap_3 equ %00001100 ;; 2    2
 HeatMap_4 equ %11001100 ;; 3    3
 
-
-;org &6000
 HeatMap:
 	db HeatMap_0
 	db %10000000

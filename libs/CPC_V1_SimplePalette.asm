@@ -22,7 +22,6 @@ defb &54 ;; #14 Black
 defb &46 ;; #15 Background
 defb &46 ;; Border
 
-
 Palette_Init:
 	;; CPC has some quirks here as well, seems to be caused by the ability to flash each colour
 	;;
@@ -30,6 +29,22 @@ Palette_Init:
 	;; https://www.cpcwiki.eu/forum/programming/bios-call-scr_set_ink-and-interrupts/
 	ld hl,ColourPalette
 	call SetupColours
+ret
+
+Palette_AllBlack:
+	ld b,17			;; 16 colours + 1 border
+	xor a			;; start with pen 0
+	ld e,&54
+DoColours_AllBlack:
+	push bc			;; need to stash b as we are using it for our loop and need it
+				;; below to write to the port 		
+	
+		ld bc,&7F00
+     		out (c),a	;; PENR:&7F{pp} - where pp is the palette/pen number 
+		out (c),e	;; INKR:&7F{hc} - where hc is the hardware colour number
+	pop bc
+	inc a			;; increment pen number
+	djnz DoColours_AllBlack
 ret
 
 SetupColours:
